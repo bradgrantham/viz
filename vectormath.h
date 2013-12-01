@@ -2,10 +2,11 @@
  * $Header: /home/grantham/cvsroot/projects/modules/singles/linmath.h,v 1.4 2007/02/01 05:57:01 grantham Exp $
  */
 
-#ifndef __LINMATH_H__
-#define __LINMATH_H__
+#ifndef __VECTORMATH_H__
+#define __VECTORMATH_H__
 
 #include <cmath>
+#include <cstdio>
 
 template <class V>
 inline float vec_dot(const V& v0, const V& v1)
@@ -538,6 +539,10 @@ struct mat4f
 	m[12] = x;
 	m[13] = y;
 	m[14] = z;
+        printf("    %f %f %f %f\n", m[0], m[1], m[2], m[3]);
+        printf("    %f %f %f %f\n", m[4], m[5], m[6], m[7]);
+        printf("    %f %f %f %f\n", m[8], m[9], m[10], m[11]);
+        printf("    %f %f %f %f\n", m[12], m[13], m[14], m[15]);
 
 	return m;
     }
@@ -679,7 +684,7 @@ inline vec3f operator*(const vec3f& in, const mat4f& m)
 
 // XXX There's ray code in the original projects/modules/singles/linmath.h
 
-#endif /* __LINMATH_H__ */
+#endif /* __VECTORMATH_H__ */
 
 /*!
  * vi:tabstop=8

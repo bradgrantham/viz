@@ -14,6 +14,14 @@ make Transform a class or c++ ize
 set up draw code
 */
 
+void print_matrix(float *v)
+{
+    printf("%f %f %f %f\n", v[0], v[1], v[2], v[3]);
+    printf("%f %f %f %f\n", v[4], v[5], v[6], v[7]);
+    printf("%f %f %f %f\n", v[8], v[9], v[10], v[11]);
+    printf("%f %f %f %f\n", v[12], v[13], v[14], v[15]);
+}
+
 //------------------------------------------------------------------------
 // geometry
 //
@@ -114,17 +122,19 @@ static void calcViewMatrix(rot4f viewRotation, vec3f viewOffset,
     /* These could be generated with OpenGL matrix functions */
     *viewMatrix = mat4f::identity;
 
-    tmp.translation(viewOffset[0], viewOffset[1], viewOffset[2]);
-    *viewMatrix = tmp;
+    printf("viewOffset: %f %f %f\n",
+        viewOffset[0],
+        viewOffset[1],
+        viewOffset[2]);
+    *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
+    printf("translation: ");
+    print_matrix(viewMatrix->m_v);
 
-    tmp = viewRotation;
-    viewMatrix->mult(tmp, *viewMatrix);
+    *viewMatrix = *viewMatrix * mat4f(viewRotation);
 
-    tmp.scale(objScale[0], objScale[1], objScale[2]);
-    viewMatrix->mult(tmp, *viewMatrix);
+    *viewMatrix = *viewMatrix * mat4f::scale(objScale[0], objScale[1], objScale[2]);
 
-    tmp.translation(-objCenter[0], -objCenter[1], -objCenter[2]);
-    viewMatrix->mult(tmp, *viewMatrix);
+    *viewMatrix = *viewMatrix * mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]);
 }
 
 /* external API */
@@ -245,7 +255,7 @@ void xformInitializeViewFromBox(Transform *xform, const vec3f& boxmin, const vec
 
 static Transform gSceneTransform;
 static Transform gObjectTransform;
-static Transform *gCurrentTransform = &gSceneTransform;
+static Transform *gCurrentTransform = NULL;
 
 static bool gStreamFrames = false;
 
@@ -262,14 +272,6 @@ static float object_diffuse[4] = {.8, .8, .8, 1};
 static float object_specular[4] = {.5, .5, .5, 1};
 static float object_shininess = 50;
 
-static bool draw_wireframe = false;
-static bool flat_shade = false;
-static bool rotate_object = true;
-static bool rotate_lights = true;
-
-float last_frame_time = 0;
-float object_time = 0;
-float lights_time = 0;
 
 //----------------------------------------------------------------------------
 // Actual GL functions
@@ -365,25 +367,26 @@ int triangle_count = 24;
 
 void draw_object(float object_time, bool draw_wireframe, bool flat_shade)
 {
+    CHECK_OPENGL(__LINE__);
     if(flat_shade)
         glShadeModel(GL_FLAT);
     else
         glShadeModel(GL_SMOOTH);
 
-    glPushMatrix();
+    // glPushMatrix();
 
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, object_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, object_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, object_specular);
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, object_shininess);
 
-    float object_angle_x = object_time * 45;
-    float object_angle_y = object_time * 45 / 1.3;
+    // float object_angle_x = object_time * 45;
+    // float object_angle_y = object_time * 45 / 1.3;
 
-    glRotatef(object_angle_x, 1, 0, 0);
-    glRotatef(object_angle_y, 0, 1, 0);
-    glScalef(1.0 / size, 1.0 / size, 1.0 / size);
-    glTranslatef(-center[0], -center[1], -center[2]);
+    // glRotatef(object_angle_x, 1, 0, 0);
+    // glRotatef(object_angle_y, 0, 1, 0);
+    // glScalef(1.0 / size, 1.0 / size, 1.0 / size);
+    // glTranslatef(-center[0], -center[1], -center[2]);
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_NORMAL_ARRAY);
@@ -399,7 +402,7 @@ void draw_object(float object_time, bool draw_wireframe, bool flat_shade)
 
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_NORMAL_ARRAY);
-    glPopMatrix();
+    // glPopMatrix();
     CHECK_OPENGL(__LINE__);
 }
 
@@ -434,9 +437,20 @@ void initialize_gl()
     glEnable(GL_NORMALIZE);
 
     CHECK_OPENGL(__LINE__);
+
+    vec3f boxmin, boxmax;
+    box_set_empty(boxmin, boxmax);
+    for(int i = 0; i < triangle_count * 3; i++) {
+        box_extend(boxmin, boxmax, vertices[i].v[0], vertices[i].v[1], vertices[i].v[2]);
+    }
+    xformInitializeViewFromBox(&gSceneTransform, boxmin, boxmax, .57595f);
+
+    xformInitialize(&gObjectTransform);
+    gObjectTransform.scale[0] = .4;
+    gObjectTransform.scale[1] = .4;
+    gObjectTransform.scale[2] = .4;
+    xformCalcMatrix(&gObjectTransform);
 }
-
-
 
 static void error_callback(int error, const char* description)
 {
@@ -529,9 +543,53 @@ static void scroll(GLFWwindow *window, double dx, double dy)
     printf("scroll %f, %f\n", dx, dy);
 }
 
+float frustLeft		= -0.66f;
+float frustRight	= 0.66f;
+float frustBottom	= -0.66f;
+float frustTop		= 0.66f;
+
 static void redraw(GLFWwindow *window)
 {
+    float nearClip, farClip;
+    CHECK_OPENGL(__LINE__);
+
+    frustLeft = frustBottom * gWindowWidth / gWindowHeight;
+    frustRight = frustTop * gWindowWidth / gWindowHeight;
+
+    /* XXX - need to create new box from all subordinate boxes */
+    nearClip = - gSceneTransform.translation[2] - gSceneTransform.referenceSize;
+    farClip = - gSceneTransform.translation[2] + gSceneTransform.referenceSize;
+    if(nearClip < 0.1 * gSceneTransform.referenceSize)
+	nearClip = 0.1 * gSceneTransform.referenceSize;
+    if(farClip < 0.2 * gSceneTransform.referenceSize)
+	nearClip = 0.2 * gSceneTransform.referenceSize;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glFrustum(frustLeft * nearClip, frustRight * nearClip, frustBottom * nearClip, frustTop * nearClip, nearClip, farClip);
+    CHECK_OPENGL(__LINE__);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glMatrixMode(GL_MODELVIEW);
+    CHECK_OPENGL(__LINE__);
+
+    glPushMatrix();
+    glMultMatrixf((float *)gSceneTransform.matrix.m_v);
+    print_matrix(gSceneTransform.matrix.m_v);
+    CHECK_OPENGL(__LINE__);
+
+    /* draw floor, draw shadow, etc */
+    CHECK_OPENGL(__LINE__);
+
+    glPushMatrix();
+    glMultMatrixf((float *)gObjectTransform.matrix.m_v);
     draw_object(0, false, false);
+
+    glPopMatrix();
+
+    glPopMatrix();
+
 }
 
 int main()
@@ -552,6 +610,7 @@ int main()
 
     glfwMakeContextCurrent(window);
 
+    gCurrentTransform = &gObjectTransform;
     initialize_gl();
 
     glfwSetKeyCallback(window, key);
