@@ -6,59 +6,12 @@
 #include <GLFW/glfw3.h>
 
 #include "vectormath.h"
+#include "geometry.h"
 
 /*
-move box to geometry.h/cpp
 make Transform a class or c++ ize
     transform.h
-set up draw code
 */
-
-void print_matrix(float *v)
-{
-    printf("%f %f %f %f\n", v[0], v[1], v[2], v[3]);
-    printf("%f %f %f %f\n", v[4], v[5], v[6], v[7]);
-    printf("%f %f %f %f\n", v[8], v[9], v[10], v[11]);
-    printf("%f %f %f %f\n", v[12], v[13], v[14], v[15]);
-}
-
-//------------------------------------------------------------------------
-// geometry
-//
-// make box class?, void clear(), bool empty(), vec3f extent()
-//
-
-void box_set_empty(vec3f& boxmin, vec3f& boxmax)
-{
-    boxmin.set(
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max());
-    boxmax.set(
-        -std::numeric_limits<float>::max(),
-        -std::numeric_limits<float>::max(),
-        -std::numeric_limits<float>::max());
-}
-
-void box_extend(vec3f& boxmin, vec3f& boxmax, float x, float y, float z)
-{
-    boxmin[0] = std::min(boxmin[0], x);
-    boxmin[1] = std::min(boxmin[1], y);
-    boxmin[2] = std::min(boxmin[2], z);
-    boxmax[0] = std::max(boxmax[0], x);
-    boxmax[1] = std::max(boxmax[1], y);
-    boxmax[2] = std::max(boxmax[2], z);
-}
-
-void box_extend(vec3f& boxmin, vec3f& boxmax, float x, float y, float z, float r)
-{
-    boxmin[0] = std::min(boxmin[0], x - r);
-    boxmin[1] = std::min(boxmin[1], y - r);
-    boxmin[2] = std::min(boxmin[2], z - r);
-    boxmax[0] = std::max(boxmax[0], x + r);
-    boxmax[1] = std::max(boxmax[1], y + r);
-    boxmax[2] = std::max(boxmax[2], z + r);
-}
 
 //------------------------------------------------------------------------
 // Manipulator 
@@ -215,7 +168,7 @@ void xformInitialize(Transform *xform)
 }
 
 
-void xformInitializeViewFromBox(Transform *xform, const vec3f& boxmin, const vec3f& boxmax, float fov)
+void xformInitializeViewFromBox(Transform *xform, const box& bounds, float fov)
 {
     xform->worldX = vec3f(1.0f, 0.0f, 0.0f);
     xform->worldY = vec3f(0.0f, 1.0f, 0.0f);
@@ -225,14 +178,7 @@ void xformInitializeViewFromBox(Transform *xform, const vec3f& boxmin, const vec
 
     xform->scale = vec3f(1.0f, 1.0f, 1.0f);
 
-    if(boxmax[0] - boxmin[0] > boxmax[1] - boxmin[1] &&
-	boxmax[0] - boxmin[0] > boxmax[2] - boxmin[2])
-        xform->referenceSize = boxmax[0] - boxmin[0];
-    else if(boxmax[1] - boxmin[1] > boxmax[2] - boxmin[2])
-        xform->referenceSize = boxmax[1] - boxmin[1];
-    else
-        xform->referenceSize = boxmax[2] - boxmin[2];
-
+    xform->referenceSize = bounds.largest_side();
     xform->motionScale = 1.0;
 
     xform->translation.set(0, 0, -xform->referenceSize / cosf(fov / 2.0));
@@ -1083,12 +1029,11 @@ void initialize_gl()
 
     CHECK_OPENGL(__LINE__);
 
-    vec3f boxmin, boxmax;
-    box_set_empty(boxmin, boxmax);
-    for(int i = 0; i < triangle_count * 3; i++) {
-        box_extend(boxmin, boxmax, vertices[i].v[0], vertices[i].v[1], vertices[i].v[2]);
-    }
-    xformInitializeViewFromBox(&gSceneTransform, boxmin, boxmax, .57595f);
+    box bounds;
+    for(int i = 0; i < triangle_count * 3; i++)
+        bounds.extend(vertices[i].v);
+
+    xformInitializeViewFromBox(&gSceneTransform, bounds, .57595f);
 
     xformInitialize(&gObjectTransform);
     xformCalcMatrix(&gObjectTransform);
