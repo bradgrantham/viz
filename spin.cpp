@@ -25,7 +25,7 @@ void print_matrix(float *v)
 //------------------------------------------------------------------------
 // geometry
 //
-// make box class, void clear(), bool empty(), vec3f extent()
+// make box class?, void clear(), bool empty(), vec3f extent()
 //
 
 void box_set_empty(vec3f& boxmin, vec3f& boxmax)
@@ -117,24 +117,18 @@ static void dragToRotation(float dx, float dy, rot4f *rotation)
 static void calcViewMatrix(rot4f viewRotation, vec3f viewOffset,
     vec3f objCenter, vec3f objScale, mat4f *viewMatrix)
 {
-    mat4f tmp;
+    if(false) {
+        *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
+        *viewMatrix = *viewMatrix * mat4f(viewRotation);
+        *viewMatrix = *viewMatrix * mat4f::scale(objScale[0], objScale[1], objScale[2]);
+        *viewMatrix = *viewMatrix * mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]);
+    } else {
+        *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
+        *viewMatrix = mat4f(viewRotation) * *viewMatrix;
 
-    /* These could be generated with OpenGL matrix functions */
-    *viewMatrix = mat4f::identity;
-
-    printf("viewOffset: %f %f %f\n",
-        viewOffset[0],
-        viewOffset[1],
-        viewOffset[2]);
-    *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
-    printf("translation: ");
-    print_matrix(viewMatrix->m_v);
-
-    *viewMatrix = *viewMatrix * mat4f(viewRotation);
-
-    *viewMatrix = *viewMatrix * mat4f::scale(objScale[0], objScale[1], objScale[2]);
-
-    *viewMatrix = *viewMatrix * mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]);
+        *viewMatrix = mat4f::scale(objScale[0], objScale[1], objScale[2]) * *viewMatrix;
+        *viewMatrix = mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]) * *viewMatrix;
+    }
 }
 
 /* external API */
@@ -187,6 +181,14 @@ void xformMotion(Transform *xform, float dx, float dy)
 	    break;
 
 	case XFORM_MODE_DOLLY:
+            printf("(%f %f %f) + (%f %f %f) * %f * %f * %f\n",
+            xform->translation.m_v[0],
+            xform->translation.m_v[1],
+            xform->translation.m_v[2],
+            xform->worldZ.m_v[0],
+            xform->worldZ.m_v[1],
+            xform->worldZ.m_v[2],
+            dy, xform->referenceSize, xform->motionScale);
 	    xform->translation = xform->translation + xform->worldZ * dy * xform->referenceSize * xform->motionScale;
 	    break;
     }
@@ -198,8 +200,8 @@ void xformMotion(Transform *xform, float dx, float dy)
 void xformInitialize(Transform *xform)
 {
     xform->worldX = vec3f(1.0f, 0.0f, 0.0f);
-    xform->worldX = vec3f(0.0f, 1.0f, 0.0f);
-    xform->worldX = vec3f(0.0f, 0.0f, 1.0f);
+    xform->worldY = vec3f(0.0f, 1.0f, 0.0f);
+    xform->worldZ = vec3f(0.0f, 0.0f, 1.0f);
 
     xform->center.set(0, 0, 0);
 
@@ -224,8 +226,8 @@ void xformInitialize(Transform *xform)
 void xformInitializeViewFromBox(Transform *xform, const vec3f& boxmin, const vec3f& boxmax, float fov)
 {
     xform->worldX = vec3f(1.0f, 0.0f, 0.0f);
-    xform->worldX = vec3f(0.0f, 1.0f, 0.0f);
-    xform->worldX = vec3f(0.0f, 0.0f, 1.0f);
+    xform->worldY = vec3f(0.0f, 1.0f, 0.0f);
+    xform->worldZ = vec3f(0.0f, 0.0f, 1.0f);
 
     xform->center = vec3f(0.0f, 0.0f, 0.0f);
 
@@ -261,6 +263,9 @@ static bool gStreamFrames = false;
 
 static int gWindowWidth;
 static int gWindowHeight;
+
+// to handle https://github.com/glfw/glfw/issues/161
+static double gMotionReported = false;
 
 static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
@@ -446,9 +451,6 @@ void initialize_gl()
     xformInitializeViewFromBox(&gSceneTransform, boxmin, boxmax, .57595f);
 
     xformInitialize(&gObjectTransform);
-    gObjectTransform.scale[0] = .4;
-    gObjectTransform.scale[1] = .4;
-    gObjectTransform.scale[2] = .4;
     xformCalcMatrix(&gObjectTransform);
 }
 
@@ -507,19 +509,25 @@ static void button(GLFWwindow *window, int b, int action, int mods)
     if(b == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
         gButtonPressed = 1;
         printf("button down, %f, %f\n", x, y);
-#if defined(DEBUG)
-	printf("    now %f: %d %d\n", timerGet(motionTimer), x - gOldMouseX, y - gOldMouseY);
-#endif /* defined(DEBUG) */
+	gOldMouseX = x;
+	gOldMouseY = y;
     } else {
         gButtonPressed = -1;
         printf("button up, %f, %f\n", x, y);
-	gOldMouseX = x;
-	gOldMouseY = y;
     }
 }
 
 static void motion(GLFWwindow *window, double x, double y)
 {
+    // to handle https://github.com/glfw/glfw/issues/161
+    // If no motion has been reported yet, we catch the first motion
+    // reported and store the current location
+    if(!gMotionReported) {
+        gMotionReported = true;
+        gOldMouseX = x;
+        gOldMouseY = y;
+    }
+
     double dx, dy;
 
     dx = x - gOldMouseX;
@@ -528,11 +536,10 @@ static void motion(GLFWwindow *window, double x, double y)
     gOldMouseX = x;
     gOldMouseY = y;
 
-
     if(gButtonPressed == 1) {
         printf("drag %f, %f\n", dx, dy);
 
-        xformMotion(gCurrentTransform, dx / 512.0, dy / 512.0);
+        xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
         if(gCurrentTransform == &gSceneTransform)
             xformSetFrame(&gObjectTransform, gSceneTransform.matrix);
     }
@@ -541,6 +548,12 @@ static void motion(GLFWwindow *window, double x, double y)
 static void scroll(GLFWwindow *window, double dx, double dy)
 {
     printf("scroll %f, %f\n", dx, dy);
+    xformMode oldmode = gCurrentTransform->mode;
+    gCurrentTransform->mode = XFORM_MODE_DOLLY;
+    xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
+    if(gCurrentTransform == &gSceneTransform)
+        xformSetFrame(&gObjectTransform, gSceneTransform.matrix);
+    gCurrentTransform->mode = oldmode;
 }
 
 float frustLeft		= -0.66f;
@@ -576,7 +589,7 @@ static void redraw(GLFWwindow *window)
 
     glPushMatrix();
     glMultMatrixf((float *)gSceneTransform.matrix.m_v);
-    print_matrix(gSceneTransform.matrix.m_v);
+    // print_matrix(gSceneTransform.matrix.m_v);
     CHECK_OPENGL(__LINE__);
 
     /* draw floor, draw shadow, etc */
@@ -601,6 +614,7 @@ int main()
     if(!glfwInit())
         exit(EXIT_FAILURE);
 
+    glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(gWindowWidth = 512, gWindowHeight = 512, "Spin", NULL, NULL);
     if (!window) {
         glfwTerminate();
@@ -610,7 +624,7 @@ int main()
 
     glfwMakeContextCurrent(window);
 
-    gCurrentTransform = &gObjectTransform;
+    gCurrentTransform = &gSceneTransform;
     initialize_gl();
 
     glfwSetKeyCallback(window, key);

@@ -539,11 +539,6 @@ struct mat4f
 	m[12] = x;
 	m[13] = y;
 	m[14] = z;
-        printf("    %f %f %f %f\n", m[0], m[1], m[2], m[3]);
-        printf("    %f %f %f %f\n", m[4], m[5], m[6], m[7]);
-        printf("    %f %f %f %f\n", m[8], m[9], m[10], m[11]);
-        printf("    %f %f %f %f\n", m[12], m[13], m[14], m[15]);
-
 	return m;
     }
 
