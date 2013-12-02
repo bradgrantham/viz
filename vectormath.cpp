@@ -267,7 +267,7 @@ rot4f operator*(const rot4f& r1, const rot4f& r2)
     return t;
 }
 
-#ifdef LINMATH_TEST
+#ifdef TEST
 
 #include <stdio.h>
 
