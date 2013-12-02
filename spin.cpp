@@ -181,14 +181,6 @@ void xformMotion(Transform *xform, float dx, float dy)
 	    break;
 
 	case XFORM_MODE_DOLLY:
-            printf("(%f %f %f) + (%f %f %f) * %f * %f * %f\n",
-            xform->translation.m_v[0],
-            xform->translation.m_v[1],
-            xform->translation.m_v[2],
-            xform->worldZ.m_v[0],
-            xform->worldZ.m_v[1],
-            xform->worldZ.m_v[2],
-            dy, xform->referenceSize, xform->motionScale);
 	    xform->translation = xform->translation + xform->worldZ * dy * xform->referenceSize * xform->motionScale;
 	    break;
     }
@@ -488,7 +480,6 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
                 break;
 
             case 'Q': case '\033':
-                printf("q\n");
                 glfwSetWindowShouldClose(window, GL_TRUE);
                 break;
         }
@@ -508,12 +499,10 @@ static void button(GLFWwindow *window, int b, int action, int mods)
 
     if(b == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
         gButtonPressed = 1;
-        printf("button down, %f, %f\n", x, y);
 	gOldMouseX = x;
 	gOldMouseY = y;
     } else {
         gButtonPressed = -1;
-        printf("button up, %f, %f\n", x, y);
     }
 }
 
@@ -537,8 +526,6 @@ static void motion(GLFWwindow *window, double x, double y)
     gOldMouseY = y;
 
     if(gButtonPressed == 1) {
-        printf("drag %f, %f\n", dx, dy);
-
         xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
         if(gCurrentTransform == &gSceneTransform)
             xformSetFrame(&gObjectTransform, gSceneTransform.matrix);
@@ -547,7 +534,6 @@ static void motion(GLFWwindow *window, double x, double y)
 
 static void scroll(GLFWwindow *window, double dx, double dy)
 {
-    printf("scroll %f, %f\n", dx, dy);
     xformMode oldmode = gCurrentTransform->mode;
     gCurrentTransform->mode = XFORM_MODE_DOLLY;
     xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
