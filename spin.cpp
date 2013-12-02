@@ -7,195 +7,13 @@
 
 #include "vectormath.h"
 #include "geometry.h"
-
-/*
-make Transform a class or c++ ize
-    transform.h
-*/
-
-//------------------------------------------------------------------------
-// Manipulator 
-//
-// drawing code...?
-// make a class
-
-
-enum xformMode {
-    XFORM_MODE_ROTATE,	/* rotate in direction of mouse motion */
-    XFORM_MODE_ROLL,		/* rotate around Z axis */
-    XFORM_MODE_SCROLL,		/* translate in X-Y */
-    XFORM_MODE_DOLLY		/* translate in Z */
-};
-
-typedef struct { 
-    enum xformMode mode;
-    mat4f matrix;
-
-    mat4f frame;		/* The coordinate frame for this transform */
-
-    vec3f worldX;		/* world X axis in this coordinate space */
-    vec3f worldY;		/* world Y axis in this coordinate space */	
-    vec3f worldZ;		/* world Z axis in this coordinate space */
-
-    float referenceSize;	/* used to calculate translations */
-    float motionScale;		/* for dynamic scaling, etc */
-
-    rot4f rotation;		/* radians, x, y, z, like OpenGL */
-    vec3f translation;
-    vec3f scale;		/* scaled around center. */
-    vec3f center;		/* ignore by setting to <0,0,0> */
-} Transform;
-
-/* Win32 math.h doesn't define M_PI. */
-#if defined(_WIN32)
-#if !defined(M_PI)
-#define M_PI 3.14159265
-#endif /* !defined(M_PI) */
-#endif /* defined(WIN32) */
-
-/* internal use */
-
-static void dragToRotation(float dx, float dy, rot4f *rotation)
-{
-    float dist;
-
-    /* XXX grantham 990825 - this "dist" doesn't make me confident. */
-    /* but I put in the *10000 to decrease chance of underflow  (???) */
-    dist = sqrt(dx * 10000 * dx * 10000 + dy * 10000 * dy * 10000) / 10000;
-    /* dist = sqrt(dx * dx + dy * dy); */
-
-    rotation->set(M_PI * dist, dy / dist, dx / dist, 0.0f);
-}
-
-static void calcViewMatrix(rot4f viewRotation, vec3f viewOffset,
-    vec3f objCenter, vec3f objScale, mat4f *viewMatrix)
-{
-    if(false) {
-        *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
-        *viewMatrix = *viewMatrix * mat4f(viewRotation);
-        *viewMatrix = *viewMatrix * mat4f::scale(objScale[0], objScale[1], objScale[2]);
-        *viewMatrix = *viewMatrix * mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]);
-    } else {
-        *viewMatrix = mat4f::translation(viewOffset[0], viewOffset[1], viewOffset[2]);
-        *viewMatrix = mat4f(viewRotation) * *viewMatrix;
-
-        *viewMatrix = mat4f::scale(objScale[0], objScale[1], objScale[2]) * *viewMatrix;
-        *viewMatrix = mat4f::translation(-objCenter[0], -objCenter[1], -objCenter[2]) * *viewMatrix;
-    }
-}
-
-/* external API */
-
-void xformCalcMatrix(Transform *xform)
-{
-    calcViewMatrix(xform->rotation, xform->translation, xform->center,
-        xform->scale, &xform->matrix);
-}
-
-void xformSetFrame(Transform *xform, const mat4f& frame)
-{
-    mat4f i;
-    vec3f origin;
-
-    xform->frame = frame;
-
-    i.invert(xform->frame);
-    origin = vec3f(0.0f, 0.0f, 0.0f) * i;
-    xform->worldX = vec3f(1.0f, 0.0f, 0.0f) * i - origin;
-    xform->worldY = vec3f(0.0f, 1.0f, 0.0f) * i - origin;
-    xform->worldZ = vec3f(0.0f, 0.0f, 1.0f) * i - origin;
-}
-
-void xformMotion(Transform *xform, float dx, float dy)
-{
-    switch(xform->mode) {
-
-	case XFORM_MODE_ROTATE:
-	    if(dx != 0 || dy != 0) {
-		rot4f localRotation;
-		rot4f worldRotation;
-		dragToRotation(dx, dy, &worldRotation);
-		localRotation[0] = worldRotation[0];
-		vec3f axis = xform->worldX * worldRotation[1] + 
-                    xform->worldY * worldRotation[2];
-		localRotation.set_axis(axis);
-		xform->rotation = xform->rotation * localRotation;
-	    }
-	    break;
-
-	case XFORM_MODE_ROLL:
-            xform->rotation = xform->rotation * rot4f(M_PI * 2 * -dy, 0, 0, 1);
-	    break;
-
-	case XFORM_MODE_SCROLL:
-	    xform->translation = xform->translation +
-                xform->worldX * dx * xform->referenceSize * xform->motionScale +
-                xform->worldY * dy * xform->referenceSize * xform->motionScale;
-	    break;
-
-	case XFORM_MODE_DOLLY:
-	    xform->translation = xform->translation + xform->worldZ * dy * xform->referenceSize * xform->motionScale;
-	    break;
-    }
-
-    calcViewMatrix(xform->rotation, xform->translation, xform->center,
-        xform->scale, &xform->matrix);
-}
-
-void xformInitialize(Transform *xform)
-{
-    xform->worldX = vec3f(1.0f, 0.0f, 0.0f);
-    xform->worldY = vec3f(0.0f, 1.0f, 0.0f);
-    xform->worldZ = vec3f(0.0f, 0.0f, 1.0f);
-
-    xform->center.set(0, 0, 0);
-
-    xform->scale.set(1, 1, 1);
-
-    /* diagonal of 2-high cube */
-    xform->referenceSize = 3.465;
-
-    xform->motionScale = 1.0;
-
-    xform->translation.set(0, 0, 0);
-
-    xform->rotation.set(0, 1, 0, 0);
-
-    calcViewMatrix(xform->rotation, xform->translation, xform->center,
-        xform->scale, &xform->matrix);
-
-    xform->mode = XFORM_MODE_ROTATE;
-}
-
-
-void xformInitializeViewFromBox(Transform *xform, const box& bounds, float fov)
-{
-    xform->worldX = vec3f(1.0f, 0.0f, 0.0f);
-    xform->worldY = vec3f(0.0f, 1.0f, 0.0f);
-    xform->worldZ = vec3f(0.0f, 0.0f, 1.0f);
-
-    xform->center = vec3f(0.0f, 0.0f, 0.0f);
-
-    xform->scale = vec3f(1.0f, 1.0f, 1.0f);
-
-    xform->referenceSize = bounds.largest_side();
-    xform->motionScale = 1.0;
-
-    xform->translation.set(0, 0, -xform->referenceSize / cosf(fov / 2.0));
-
-    xform->rotation.set(0, 1, 0, 0);
-
-    calcViewMatrix(xform->rotation, xform->translation, xform->center,
-        xform->scale, &xform->matrix);
-
-    xform->mode = XFORM_MODE_ROTATE;
-}
+#include "manipulator.h"
 
 //------------------------------------------------------------------------
 
-static Transform gSceneTransform;
-static Transform gObjectTransform;
-static Transform *gCurrentTransform = NULL;
+static manipulator *gSceneManip;
+static manipulator *gObjectManip;
+static manipulator *gCurrentManip = NULL;
 
 static bool gDrawWireframe = false;
 
@@ -211,11 +29,6 @@ static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
 
 //------------------------------------------------------------------------
-
-static float object_ambient[4] = {.1, .1, .1, 1};
-static float object_diffuse[4] = {.8, .8, .8, 1};
-static float object_specular[4] = {.5, .5, .5, 1};
-static float object_shininess = 50;
 
 
 //----------------------------------------------------------------------------
@@ -973,6 +786,11 @@ void draw_object(float object_time, bool draw_wireframe)
 {
     CHECK_OPENGL(__LINE__);
 
+    static float object_ambient[4] = {.1, .1, .1, 1};
+    static float object_diffuse[4] = {.8, .8, .8, 1};
+    static float object_specular[4] = {.5, .5, .5, 1};
+    static float object_shininess = 50;
+
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, object_ambient);
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, object_diffuse);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, object_specular);
@@ -1028,15 +846,20 @@ void initialize_gl()
     glEnable(GL_NORMALIZE);
 
     CHECK_OPENGL(__LINE__);
+}
 
+static void initialize_manipulators()
+{
     box bounds;
     for(int i = 0; i < triangle_count * 3; i++)
         bounds.extend(vertices[i].v);
 
-    xformInitializeViewFromBox(&gSceneTransform, bounds, .57595f);
+    gSceneManip = new manipulator(bounds, .57595f);
 
-    xformInitialize(&gObjectTransform);
-    xformCalcMatrix(&gObjectTransform);
+    gObjectManip = new manipulator();
+    gObjectManip->calculate_matrix();
+
+    gCurrentManip = gSceneManip;
 }
 
 static void error_callback(int error, const char* description)
@@ -1053,27 +876,27 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
                 break;
 
             case 'R':
-                gCurrentTransform->mode = XFORM_MODE_ROTATE;
+                gCurrentManip->m_mode = manipulator::ROTATE;
                 break;
 
             case 'O':
-                gCurrentTransform->mode = XFORM_MODE_ROLL;
+                gCurrentManip->m_mode = manipulator::ROLL;
                 break;
 
             case 'X':
-                gCurrentTransform->mode = XFORM_MODE_SCROLL;
+                gCurrentManip->m_mode = manipulator::SCROLL;
                 break;
 
             case 'Z':
-                gCurrentTransform->mode = XFORM_MODE_DOLLY;
+                gCurrentManip->m_mode = manipulator::DOLLY;
                 break;
 
             case '1':
-                gCurrentTransform = &gSceneTransform;
+                gCurrentManip = gSceneManip;
                 break;
 
             case '2':
-                gCurrentTransform = &gObjectTransform;
+                gCurrentManip = gObjectManip;
                 break;
 
             case 'Q': case '\033':
@@ -1123,17 +946,17 @@ static void motion(GLFWwindow *window, double x, double y)
     gOldMouseY = y;
 
     if(gButtonPressed == 1) {
-        xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
-        if(gCurrentTransform == &gSceneTransform)
-            xformSetFrame(&gObjectTransform, gSceneTransform.matrix);
+        gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
+        if(gCurrentManip == gSceneManip)
+            gObjectManip->set_frame(gSceneManip->m_matrix);
     }
 }
 
 static void scroll(GLFWwindow *window, double dx, double dy)
 {
-    xformMotion(gCurrentTransform, dx / gWindowWidth, dy / gWindowHeight);
-    if(gCurrentTransform == &gSceneTransform)
-        xformSetFrame(&gObjectTransform, gSceneTransform.matrix);
+    gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
+    if(gCurrentManip == gSceneManip)
+        gObjectManip->set_frame(gSceneManip->m_matrix);
 }
 
 float frustLeft		= -0.66f;
@@ -1150,12 +973,12 @@ static void redraw(GLFWwindow *window)
     frustRight = frustTop * gWindowWidth / gWindowHeight;
 
     /* XXX - need to create new box from all subordinate boxes */
-    nearClip = - gSceneTransform.translation[2] - gSceneTransform.referenceSize;
-    farClip = - gSceneTransform.translation[2] + gSceneTransform.referenceSize;
-    if(nearClip < 0.1 * gSceneTransform.referenceSize)
-	nearClip = 0.1 * gSceneTransform.referenceSize;
-    if(farClip < 0.2 * gSceneTransform.referenceSize)
-	nearClip = 0.2 * gSceneTransform.referenceSize;
+    nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
+    farClip = - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
+    if(nearClip < 0.1 * gSceneManip->m_reference_size)
+	nearClip = 0.1 * gSceneManip->m_reference_size;
+    if(farClip < 0.2 * gSceneManip->m_reference_size)
+	nearClip = 0.2 * gSceneManip->m_reference_size;
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -1168,15 +991,14 @@ static void redraw(GLFWwindow *window)
     CHECK_OPENGL(__LINE__);
 
     glPushMatrix();
-    glMultMatrixf((float *)gSceneTransform.matrix.m_v);
-    // print_matrix(gSceneTransform.matrix.m_v);
+    glMultMatrixf((float *)gSceneManip->m_matrix.m_v);
     CHECK_OPENGL(__LINE__);
 
     /* draw floor, draw shadow, etc */
     CHECK_OPENGL(__LINE__);
 
     glPushMatrix();
-    glMultMatrixf((float *)gObjectTransform.matrix.m_v);
+    glMultMatrixf((float *)gObjectManip->m_matrix.m_v);
     draw_object(0, gDrawWireframe);
 
     glPopMatrix();
@@ -1204,8 +1026,8 @@ int main()
 
     glfwMakeContextCurrent(window);
 
-    gCurrentTransform = &gSceneTransform;
     initialize_gl();
+    initialize_manipulators();
 
     glfwSetKeyCallback(window, key);
     glfwSetMouseButtonCallback(window, button);

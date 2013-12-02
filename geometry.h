@@ -2,6 +2,7 @@
 #define _GEOMETRY_H_
 
 #include <limits>
+#include <algorithm>
 #include "vectormath.h"
 
 struct box
