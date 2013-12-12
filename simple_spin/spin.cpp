@@ -28,9 +28,6 @@ static double gMotionReported = false;
 static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
 
-//------------------------------------------------------------------------
-
-
 //----------------------------------------------------------------------------
 // Actual GL functions
 
