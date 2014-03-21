@@ -77,7 +77,7 @@ void manipulator::move(float dx, float dy)
 	case SCROLL:
 	    m_translation = m_translation +
                 m_worldX * dx * m_reference_size * m_motion_scale +
-                m_worldY * dy * m_reference_size * m_motion_scale;
+                m_worldY * -dy * m_reference_size * m_motion_scale;
 	    break;
 
 	case DOLLY:
