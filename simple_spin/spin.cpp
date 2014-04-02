@@ -1,8 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <limits>
 #include <algorithm>
 #include <unistd.h>
+
+#define GLFW_INCLUDE_GL3
 #include <GLFW/glfw3.h>
 
 #include "vectormath.h"
@@ -28,18 +31,68 @@ static double gMotionReported = false;
 static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
 
+bool gPrintShaderLog = true;
+
 //----------------------------------------------------------------------------
 // Actual GL functions
 
 #define CHECK_OPENGL(l) {int _glerr ; if((_glerr = glGetError()) != GL_NO_ERROR) printf("GL Error: %04X at %d\n", _glerr, l); }
 
-struct vertex
+static bool CheckShaderCompile(GLuint shader, const std::string& shader_name)
+{
+    int status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if(status == GL_TRUE)
+	return true;
+
+    if(gPrintShaderLog) {
+        int length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+
+        if (length > 0) {
+            char log[length];
+            glGetShaderInfoLog(shader, length, NULL, log);
+            fprintf(stderr, "%s shader error log:\n%s\n", shader_name.c_str(), log);
+        }
+
+        fprintf(stderr, "%s compile failure.\n", shader_name.c_str());
+        fprintf(stderr, "shader text:\n");
+        glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, &length);
+        char source[length];
+        glGetShaderSource(shader, length, NULL, source);
+        fprintf(stderr, "%s\n", source);
+    }
+    return false;
+}
+
+static bool CheckProgramLink(GLuint program)
+{
+    int status;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if(status == GL_TRUE)
+	return true;
+
+    if(gPrintShaderLog) {
+        int log_length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
+
+        if (log_length > 0) {
+            char log[log_length];
+            glGetProgramInfoLog(program, log_length, NULL, log);
+            fprintf(stderr, "program error log: %s\n",log);
+        }
+    }
+
+    return false;
+}
+
+struct Vertex
 {
     float v[3];
     float n[3];
 };
 
-struct vertex vertices[] = {
+struct Vertex Vertices[] = {
     {{-31.531658, -5.454563, 98.880981}, {-0.042442, -0.098477, 0.994234}},
     {{19.249924, 11.012655, 102.012672}, {-0.042442, -0.098477, 0.994234}},
     {{-15.320923, 16.778076, 101.325745}, {-0.042442, -0.098477, 0.994234}},
@@ -777,33 +830,123 @@ struct vertex vertices[] = {
 float center[3] = {0.217589, 0.244985, 0.925478};
 float size = 103.353538;
 
-int triangle_count = 244;
+int gTriangleCount = 244;
 
-void draw_object(float object_time, bool draw_wireframe)
+
+static const char *gVertexShaderText =
+"varying vec3 vertex_normal;\n"
+"varying vec4 vertex_position;\n"
+"varying vec3 eye_direction;\n"
+"\n"
+"vec3 unitvec(vec4 p1, vec4 p2)\n"
+"{\n"
+"    if(p1.w == 0 && p2.w == 0)\n"
+"	return vec3(p2 - p1);\n"
+"    if(p1.w == 0)\n"
+"	return vec3(-p1);\n"
+"    if(p2.w == 0)\n"
+"	return vec3(p2);\n"
+"    return p2.xyz / p2.w - p1.xyz / p1.w;\n"
+"}\n"
+"\n"
+"void main()\n"
+"{\n"
+"#if defined(texture_diffuse_source)\n"
+"    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+"#endif\n"
+"\n"
+"    /* not bothering to normalize because I normalize in the fragment shader */\n"
+"    vertex_normal = gl_NormalMatrix * gl_Normal;\n"
+"    vertex_position = gl_ModelViewMatrix * gl_Vertex;\n"
+"    eye_direction = normalize(unitvec(vertex_position, vec4(0, 0, 0, 1)));\n"
+"\n"
+"    gl_Position = ftransform();\n"
+"}\n";
+
+
+static const char *gFragmentShaderText =
+"#if defined(texture_diffuse_source)\n"
+"    uniform sampler2D texture_diffuse;\n"
+"#endif\n"
+"\n"
+"varying vec3 vertex_normal;\n"
+"varying vec4 vertex_position;\n"
+"varying vec3 eye_direction;\n"
+"\n"
+"vec3 unitvec(vec4 p1, vec4 p2)\n"
+"{\n"
+"    if(p1.w == 0 && p2.w == 0)\n"
+"	return vec3(p2 - p1);\n"
+"    if(p1.w == 0)\n"
+"	return vec3(-p1);\n"
+"    if(p2.w == 0)\n"
+"	return vec3(p2);\n"
+"    return p2.xyz / p2.w - p1.xyz / p1.w;\n"
+"}\n"
+"\n"
+"void main()\n"
+"{\n"
+"#if defined(texture_diffuse_source)\n"
+"    vec4 diffuse = gl_FrontMaterial.diffuse * texture2D(texture_diffuse, gl_TexCoord[0].st);\n"
+"#else \n"
+"    vec4 diffuse = gl_FrontMaterial.diffuse;\n"
+"#endif\n"
+"    vec4 ambient = gl_FrontMaterial.ambient;\n"
+"    vec4 specular = gl_FrontMaterial.specular;\n"
+"    float shininess = gl_FrontMaterial.shininess;\n"
+"    vec4 diffusesum = vec4(0, 0, 0, 0);\n"
+"    vec4 specularsum = vec4(0, 0, 0, 0);\n"
+"    vec4 ambientsum = vec4(0, 0, 0, 0);\n"
+"\n"
+"    vec3 normal = normalize(vertex_normal);\n"
+"\n"
+"    int light;\n"
+"    vec3 edir = eye_direction;\n"
+"\n"
+"    for(light = 0; light < gl_MaxLights; light++) {\n"
+"        if(gl_LightSource[light].spotExponent > 0) {\n"
+"            vec4 light_pos = gl_LightSource[light].position;\n"
+"\n"
+"            vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n"
+"\n"
+"            diffusesum += max(0, dot(normal, ldir)) * gl_LightSource[light].diffuse;\n"
+"\n"
+"            ambientsum += gl_LightSource[light].ambient;\n"
+"\n"
+"            vec3 refl = reflect(-ldir, normal);\n"
+"            specularsum += pow(max(0, dot(refl, edir)), shininess) * gl_LightSource[light].specular;\n"
+"        }\n"
+"    }\n"
+"\n"
+"    gl_FragColor = diffusesum * diffuse + ambientsum * ambient + specularsum * specular;\n"
+"}\n";
+
+
+void DrawObject(float objectTime, bool drawWireframe)
 {
     CHECK_OPENGL(__LINE__);
 
-    static float object_ambient[4] = {.1, .1, .1, 1};
-    static float object_diffuse[4] = {.8, .8, .8, 1};
-    static float object_specular[4] = {.5, .5, .5, 1};
-    static float object_shininess = 50;
+    static float objectAmbient[4] = {.1, .1, .1, 1};
+    static float objectDiffuse[4] = {.8, .8, .8, 1};
+    static float objectSpecular[4] = {.5, .5, .5, 1};
+    static float objectShininess = 50;
 
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, object_ambient);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, object_diffuse);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, object_specular);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, object_shininess);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, objectAmbient);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, objectDiffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, objectSpecular);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, objectShininess);
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_NORMAL_ARRAY);
-    size_t stride = sizeof(vertices[0]);
-    glVertexPointer(3, GL_FLOAT, stride, (void*)&vertices[0].v[0]); 
-    glNormalPointer(GL_FLOAT, stride, (void*)&vertices[0].n[0]);
+    size_t stride = sizeof(Vertices[0]);
+    glVertexPointer(3, GL_FLOAT, stride, (void*)&Vertices[0].v[0]); 
+    glNormalPointer(GL_FLOAT, stride, (void*)&Vertices[0].n[0]);
 
-    if(draw_wireframe) {
-        for(int i = 0; i < triangle_count; i++)
+    if(drawWireframe) {
+        for(int i = 0; i < gTriangleCount; i++)
             glDrawArrays(GL_LINE_LOOP, i * 3, 3);
     } else {
-        glDrawArrays(GL_TRIANGLES, 0, triangle_count * 3);
+        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
     }
 
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -811,7 +954,7 @@ void draw_object(float object_time, bool draw_wireframe)
     CHECK_OPENGL(__LINE__);
 }
 
-void initialize_gl()
+void InitializeGL()
 {
     glClearColor(.25, .25, .25, 0);
     CHECK_OPENGL(__LINE__);
@@ -845,11 +988,11 @@ void initialize_gl()
     CHECK_OPENGL(__LINE__);
 }
 
-static void initialize_manipulators()
+static void InitializeManipulators()
 {
     box bounds;
-    for(int i = 0; i < triangle_count * 3; i++)
-        bounds.extend(vertices[i].v);
+    for(int i = 0; i < gTriangleCount * 3; i++)
+        bounds.extend(Vertices[i].v);
 
     gSceneManip = new manipulator(bounds, .57595f);
 
@@ -859,12 +1002,12 @@ static void initialize_manipulators()
     gCurrentManip = gSceneManip;
 }
 
-static void error_callback(int error, const char* description)
+static void ErrorCallback(int error, const char* description)
 {
     fprintf(stderr, "GLFW: %s\n", description);
 }
 
-static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
+static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if(action == GLFW_PRESS) {
         switch(key) {
@@ -903,13 +1046,13 @@ static void key(GLFWwindow *window, int key, int scancode, int action, int mods)
     }
 }
 
-static void resize(GLFWwindow *window, int x, int y)
+static void ResizeCallback(GLFWwindow *window, int x, int y)
 {
     glfwGetFramebufferSize(window, &gWindowWidth, &gWindowHeight);
     glViewport(0, 0, gWindowWidth, gWindowWidth);
 }
 
-static void button(GLFWwindow *window, int b, int action, int mods)
+static void ButtonCallback(GLFWwindow *window, int b, int action, int mods)
 {
     double x, y;
     glfwGetCursorPos(window, &x, &y);
@@ -923,7 +1066,7 @@ static void button(GLFWwindow *window, int b, int action, int mods)
     }
 }
 
-static void motion(GLFWwindow *window, double x, double y)
+static void MotionCallback(GLFWwindow *window, double x, double y)
 {
     // to handle https://github.com/glfw/glfw/issues/161
     // If no motion has been reported yet, we catch the first motion
@@ -949,25 +1092,25 @@ static void motion(GLFWwindow *window, double x, double y)
     }
 }
 
-static void scroll(GLFWwindow *window, double dx, double dy)
+static void ScrollCallback(GLFWwindow *window, double dx, double dy)
 {
     gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
     if(gCurrentManip == gSceneManip)
         gObjectManip->set_frame(gSceneManip->m_matrix);
 }
 
-float frustLeft		= -0.66f;
-float frustRight	= 0.66f;
-float frustBottom	= -0.66f;
-float frustTop		= 0.66f;
+float gFrustumLeft		= -0.66f;
+float gFrustumRight	= 0.66f;
+float gFrustumBottom	= -0.66f;
+float gFrustumTop		= 0.66f;
 
-static void redraw(GLFWwindow *window)
+static void DrawFrame(GLFWwindow *window)
 {
     float nearClip, farClip;
     CHECK_OPENGL(__LINE__);
 
-    frustLeft = frustBottom * gWindowWidth / gWindowHeight;
-    frustRight = frustTop * gWindowWidth / gWindowHeight;
+    gFrustumLeft = gFrustumBottom * gWindowWidth / gWindowHeight;
+    gFrustumRight = gFrustumTop * gWindowWidth / gWindowHeight;
 
     /* XXX - need to create new box from all subordinate boxes */
     nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
@@ -979,7 +1122,7 @@ static void redraw(GLFWwindow *window)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    glFrustum(frustLeft * nearClip, frustRight * nearClip, frustBottom * nearClip, frustTop * nearClip, nearClip, farClip);
+    glFrustum(gFrustumLeft * nearClip, gFrustumRight * nearClip, gFrustumBottom * nearClip, gFrustumTop * nearClip, nearClip, farClip);
     CHECK_OPENGL(__LINE__);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -996,7 +1139,7 @@ static void redraw(GLFWwindow *window)
 
     glPushMatrix();
     glMultMatrixf((float *)gObjectManip->m_matrix.m_v);
-    draw_object(0, gDrawWireframe);
+    DrawObject(0, gDrawWireframe);
 
     glPopMatrix();
 
@@ -1008,10 +1151,16 @@ int main()
 {
     GLFWwindow* window;
 
-    glfwSetErrorCallback(error_callback);
+    glfwSetErrorCallback(ErrorCallback);
 
     if(!glfwInit())
         exit(EXIT_FAILURE);
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    // XXX Move to OpenGL 3.2 and uncomment these:
+    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(gWindowWidth = 512, gWindowHeight = 512, "Spin", NULL, NULL);
@@ -1023,19 +1172,22 @@ int main()
 
     glfwMakeContextCurrent(window);
 
-    initialize_gl();
-    initialize_manipulators();
+    InitializeGL();
+    InitializeManipulators();
 
-    glfwSetKeyCallback(window, key);
-    glfwSetMouseButtonCallback(window, button);
-    glfwSetCursorPosCallback(window, motion);
-    glfwSetScrollCallback(window, scroll);
-    glfwSetFramebufferSizeCallback(window, resize);
-    glfwSetWindowRefreshCallback(window, redraw);
+    printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
+    printf("GL_VERSION: %s\n", glGetString(GL_VERSION));
+
+    glfwSetKeyCallback(window, KeyCallback);
+    glfwSetMouseButtonCallback(window, ButtonCallback);
+    glfwSetCursorPosCallback(window, MotionCallback);
+    glfwSetScrollCallback(window, ScrollCallback);
+    glfwSetFramebufferSizeCallback(window, ResizeCallback);
+    glfwSetWindowRefreshCallback(window, DrawFrame);
 
     while (!glfwWindowShouldClose(window)) {
 
-        redraw(window);
+        DrawFrame(window);
 
         glfwSwapBuffers(window);
 
