@@ -25,7 +25,6 @@ static bool gStreamFrames = false;
 static int gWindowWidth;
 static int gWindowHeight;
 
-// to handle https://github.com/glfw/glfw/issues/161
 static double gMotionReported = false;
 
 static double gOldMouseX, gOldMouseY;
@@ -1068,7 +1067,7 @@ static void ButtonCallback(GLFWwindow *window, int b, int action, int mods)
 
 static void MotionCallback(GLFWwindow *window, double x, double y)
 {
-    // to handle https://github.com/glfw/glfw/issues/161
+    // glfw/glfw#103
     // If no motion has been reported yet, we catch the first motion
     // reported and store the current location
     if(!gMotionReported) {
@@ -1175,8 +1174,10 @@ int main()
     InitializeGL();
     InitializeManipulators();
 
-    printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
-    printf("GL_VERSION: %s\n", glGetString(GL_VERSION));
+    if(verbose) {
+        printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
+        printf("GL_VERSION: %s\n", glGetString(GL_VERSION));
+    }
 
     glfwSetKeyCallback(window, KeyCallback);
     glfwSetMouseButtonCallback(window, ButtonCallback);
