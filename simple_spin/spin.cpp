@@ -833,91 +833,120 @@ float size = 103.353538;
 
 int gTriangleCount = 244;
 
+GLuint gProgram;
 
 static const char *gVertexShaderText = "\n\
-varying vec3 vertex_normal;\n\
-varying vec4 vertex_position;\n\
-varying vec3 eye_direction;\n\
-\n\
-vec3 unitvec(vec4 p1, vec4 p2)\n\
-{\n\
-    if(p1.w == 0 && p2.w == 0)\n\
-	return vec3(p2 - p1);\n\
-    if(p1.w == 0)\n\
-	return vec3(-p1);\n\
-    if(p2.w == 0)\n\
-	return vec3(p2);\n\
-    return p2.xyz / p2.w - p1.xyz / p1.w;\n\
-}\n\
-\n\
-void main()\n\
-{\n\
-\n\
-    vertex_normal = gl_NormalMatrix * gl_Normal;\n\
-    vertex_position = gl_ModelViewMatrix * gl_Vertex;\n\
-    eye_direction = normalize(unitvec(vertex_position, vec4(0, 0, 0, 1)));\n\
-\n\
-    gl_Position = ftransform();\n\
-}\n";
+    varying vec3 vertex_normal;\n\
+    varying vec4 vertex_position;\n\
+    varying vec3 eye_direction;\n\
+    \n\
+    vec3 unitvec(vec4 p1, vec4 p2)\n\
+    {\n\
+        if(p1.w == 0 && p2.w == 0)\n\
+            return vec3(p2 - p1);\n\
+        if(p1.w == 0)\n\
+            return vec3(-p1);\n\
+        if(p2.w == 0)\n\
+            return vec3(p2);\n\
+        return p2.xyz / p2.w - p1.xyz / p1.w;\n\
+    }\n\
+    \n\
+    void main()\n\
+    {\n\
+    \n\
+        vertex_normal = gl_NormalMatrix * gl_Normal;\n\
+        vertex_position = gl_ModelViewMatrix * gl_Vertex;\n\
+        eye_direction = normalize(unitvec(vertex_position, vec4(0, 0, 0, 1)));\n\
+    \n\
+        gl_Position = ftransform();\n\
+    }\n";
 
 
 static const char *gFragmentShaderText = "\n\
-#if defined(texture_diffuse_source)\n\
-    uniform sampler2D texture_diffuse;\n\
-#endif\n\
-\n\
-varying vec3 vertex_normal;\n\
-varying vec4 vertex_position;\n\
-varying vec3 eye_direction;\n\
-\n\
-vec3 unitvec(vec4 p1, vec4 p2)\n\
-{\n\
-    if(p1.w == 0 && p2.w == 0)\n\
-	return vec3(p2 - p1);\n\
-    if(p1.w == 0)\n\
-	return vec3(-p1);\n\
-    if(p2.w == 0)\n\
-	return vec3(p2);\n\
-    return p2.xyz / p2.w - p1.xyz / p1.w;\n\
-}\n\
-\n\
-void main()\n\
-{\n\
-#if defined(texture_diffuse_source)\n\
-    vec4 diffuse = gl_FrontMaterial.diffuse * texture2D(texture_diffuse, gl_TexCoord[0].st);\n\
-#else \n\
-    vec4 diffuse = gl_FrontMaterial.diffuse;\n\
-#endif\n\
-    vec4 ambient = gl_FrontMaterial.ambient;\n\
-    vec4 specular = gl_FrontMaterial.specular;\n\
-    float shininess = gl_FrontMaterial.shininess;\n\
-    vec4 diffusesum = vec4(0, 0, 0, 0);\n\
-    vec4 specularsum = vec4(0, 0, 0, 0);\n\
-    vec4 ambientsum = vec4(0, 0, 0, 0);\n\
-\n\
-    vec3 normal = normalize(vertex_normal);\n\
-\n\
-    int light;\n\
-    vec3 edir = eye_direction;\n\
-\n\
-    for(light = 0; light < gl_MaxLights; light++) {\n\
-        if(gl_LightSource[light].spotExponent > 0) {\n\
-            vec4 light_pos = gl_LightSource[light].position;\n\
-\n\
-            vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
-\n\
-            diffusesum += max(0, dot(normal, ldir)) * gl_LightSource[light].diffuse;\n\
-\n\
-            ambientsum += gl_LightSource[light].ambient;\n\
-\n\
-            vec3 refl = reflect(-ldir, normal);\n\
-            specularsum += pow(max(0, dot(refl, edir)), shininess) * gl_LightSource[light].specular;\n\
-        }\n\
+    varying vec3 vertex_normal;\n\
+    varying vec4 vertex_position;\n\
+    varying vec3 eye_direction;\n\
+    \n\
+    vec3 unitvec(vec4 p1, vec4 p2)\n\
+    {\n\
+        if(p1.w == 0 && p2.w == 0)\n\
+            return vec3(p2 - p1);\n\
+        if(p1.w == 0)\n\
+            return vec3(-p1);\n\
+        if(p2.w == 0)\n\
+            return vec3(p2);\n\
+        return p2.xyz / p2.w - p1.xyz / p1.w;\n\
     }\n\
-\n\
-    gl_FragColor = diffusesum * diffuse + ambientsum * ambient + specularsum * specular;\n\
-}\n";
+    \n\
+    void main()\n\
+    {\n\
+        vec4 diffuse = gl_FrontMaterial.diffuse;\n\
+        vec4 ambient = gl_FrontMaterial.ambient;\n\
+        vec4 specular = gl_FrontMaterial.specular;\n\
+        float shininess = gl_FrontMaterial.shininess;\n\
+        vec4 diffusesum = vec4(0, 0, 0, 0);\n\
+        vec4 specularsum = vec4(0, 0, 0, 0);\n\
+        vec4 ambientsum = vec4(0, 0, 0, 0);\n\
+    \n\
+        vec3 normal = normalize(vertex_normal);\n\
+    \n\
+        int light;\n\
+        vec3 edir = eye_direction;\n\
+    \n\
+        for(light = 0; light < gl_MaxLights; light++) {\n\
+            if(gl_LightSource[light].spotExponent > 0) {\n\
+                vec4 light_pos = gl_LightSource[light].position;\n\
+    \n\
+                vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
+    \n\
+                diffusesum += max(0, dot(normal, ldir)) * gl_LightSource[light].diffuse;\n\
+    \n\
+                ambientsum += gl_LightSource[light].ambient;\n\
+    \n\
+                vec3 refl = reflect(-ldir, normal);\n\
+                specularsum += pow(max(0, dot(refl, edir)), shininess) * gl_LightSource[light].specular;\n\
+            }\n\
+        }\n\
+    \n\
+        gl_FragColor = /* vec4(normal.x / 2 + .5, normal.y / 2 + .5, normal.z / 2 + .5, 1); */ diffusesum * diffuse + ambientsum * ambient + specularsum * specular;\n\
+    }\n";
 
+static GLuint GenerateProgram()
+{
+    std::string spec_string;
+
+    spec_string = "#version 120\n";
+
+    // reset line number so that I can view errors with the line number
+    // they have in the base shaders.
+    spec_string += "#line 0\n";
+
+    std::string vertex_shader_string = spec_string + gVertexShaderText;
+    std::string fragment_shader_string = spec_string + gFragmentShaderText;
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    const char *string = vertex_shader_string.c_str();
+    glShaderSource(vertex_shader, 1, &string, NULL);
+    glCompileShader(vertex_shader);
+    if(!CheckShaderCompile(vertex_shader, "vertex shader"))
+	return 0;
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    string = fragment_shader_string.c_str();
+    glShaderSource(fragment_shader, 1, &string, NULL);
+    glCompileShader(fragment_shader);
+    if(!CheckShaderCompile(fragment_shader, "fragment shader"))
+	return 0;
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+    glLinkProgram(program);
+    if(!CheckProgramLink(program))
+	return 0;
+
+    return program;
+}
 
 void DrawObject(float objectTime, bool drawWireframe)
 {
@@ -967,6 +996,8 @@ void InitializeGL()
     glMatrixMode(GL_MODELVIEW);
 
     glEnable(GL_LIGHT0);
+    glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, 1);
+
     // glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_color);
     // glLightfv(GL_LIGHT0, GL_SPECULAR, light0_color);
 
@@ -981,6 +1012,13 @@ void InitializeGL()
     glEnable(GL_CULL_FACE);
 
     glEnable(GL_NORMALIZE);
+
+    gProgram = GenerateProgram();
+
+    // glBindAttribLocation(gProgram, POSITION_ATTRIB, "position");
+    // glBindAttribLocation(gProgram, COLOR_ATTRIB, "color");
+
+    glUseProgram(gProgram);
 
     CHECK_OPENGL(__LINE__);
 }
