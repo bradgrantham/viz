@@ -5,7 +5,10 @@
 #include <algorithm>
 #include <unistd.h>
 
-#define GLFW_INCLUDE_GL3
+#define GLFW_INCLUDE_NONE
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
+// should not include GL and also #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
 #include "vectormath.h"
@@ -832,6 +835,54 @@ float center[3] = {0.217589, 0.244985, 0.925478};
 float size = 103.353538;
 
 int gTriangleCount = 244;
+GLuint gVertexBuffer;
+
+void InitializeObject()
+{
+    GLuint vao;
+    // glGenVertexArrays(1, &vao);
+    // glBindVertexArray(vao);
+
+    // glGenBuffers(1, &gVertexBuffer);
+
+    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+}
+
+void DrawObject(float objectTime, bool drawWireframe)
+{
+    CHECK_OPENGL(__LINE__);
+
+    static float objectAmbient[4] = {.1, .1, .1, 1};
+    static float objectDiffuse[4] = {.8, .8, .8, 1};
+    static float objectSpecular[4] = {.5, .5, .5, 1};
+    static float objectShininess = 50;
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, objectAmbient);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, objectDiffuse);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, objectSpecular);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, objectShininess);
+
+    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    size_t stride = sizeof(Vertices[0]);
+    // glVertexPointer(3, GL_FLOAT, stride, 0);
+    // glNormalPointer(GL_FLOAT, stride, sizeof(float) * 3);
+    glVertexPointer(3, GL_FLOAT, stride, (void*)&Vertices[0].v[0]); 
+    glNormalPointer(GL_FLOAT, stride, (void*)&Vertices[0].n[0]);
+
+    if(drawWireframe) {
+        for(int i = 0; i < gTriangleCount; i++)
+            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+    } else {
+        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
+    }
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    CHECK_OPENGL(__LINE__);
+}
 
 GLuint gProgram;
 
@@ -856,7 +907,7 @@ static const char *gVertexShaderText = "\n\
     \n\
         vertex_normal = gl_NormalMatrix * gl_Normal;\n\
         vertex_position = gl_ModelViewMatrix * gl_Vertex;\n\
-        eye_direction = normalize(unitvec(vertex_position, vec4(0, 0, 0, 1)));\n\
+        eye_direction = unitvec(vertex_position, vec4(0, 0, 0, 1));\n\
     \n\
         gl_Position = ftransform();\n\
     }\n";
@@ -891,7 +942,7 @@ static const char *gFragmentShaderText = "\n\
         vec3 normal = normalize(vertex_normal);\n\
     \n\
         int light;\n\
-        vec3 edir = eye_direction;\n\
+        vec3 edir = normalize(eye_direction);\n\
     \n\
         for(light = 0; light < gl_MaxLights; light++) {\n\
             if(gl_LightSource[light].spotExponent > 0) {\n\
@@ -946,38 +997,6 @@ static GLuint GenerateProgram()
 	return 0;
 
     return program;
-}
-
-void DrawObject(float objectTime, bool drawWireframe)
-{
-    CHECK_OPENGL(__LINE__);
-
-    static float objectAmbient[4] = {.1, .1, .1, 1};
-    static float objectDiffuse[4] = {.8, .8, .8, 1};
-    static float objectSpecular[4] = {.5, .5, .5, 1};
-    static float objectShininess = 50;
-
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, objectAmbient);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, objectDiffuse);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, objectSpecular);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, objectShininess);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
-    size_t stride = sizeof(Vertices[0]);
-    glVertexPointer(3, GL_FLOAT, stride, (void*)&Vertices[0].v[0]); 
-    glNormalPointer(GL_FLOAT, stride, (void*)&Vertices[0].n[0]);
-
-    if(drawWireframe) {
-        for(int i = 0; i < gTriangleCount; i++)
-            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
-    } else {
-        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
-    }
-
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_NORMAL_ARRAY);
-    CHECK_OPENGL(__LINE__);
 }
 
 void InitializeGL()
