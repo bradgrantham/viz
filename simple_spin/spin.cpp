@@ -21,12 +21,14 @@
 #include <algorithm>
 #include <unistd.h>
 
-#define GLFW_INCLUDE_NONE
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <OpenGL/glext.h>
+// #define GLFW_INCLUDE_NONE
+// #include <OpenGL/gl.h>
+// #include <OpenGL/glu.h>
+// #include <OpenGL/glext.h>
 // should not include GL and also #define GLFW_INCLUDE_GLCOREARB
+#define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
+
 
 #include "vectormath.h"
 #include "geometry.h"
@@ -66,8 +68,7 @@ static void CheckOpenGL(const char *filename, int line)
     int glerr;
 
     if((glerr = glGetError()) != GL_NO_ERROR) {
-        printf("GL Error: %s(%04X) at %s:%d\n", gluErrorString(glerr), glerr,
-            filename, line);
+        printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
     }
 }
 
@@ -161,7 +162,9 @@ static bool CheckProgramLink(GLuint program)
     return false;
 }
 
+GLuint gVertexArray;
 GLuint gVertexBuffer;
+
 GLuint gModelviewUniform;
 GLuint gModelviewNormalUniform;
 GLuint gProjectionUniform;
@@ -185,12 +188,12 @@ static const char *gVertexShaderText = "\n\
     uniform mat4 modelview_matrix;\n\
     uniform mat4 modelview_normal_matrix;\n\
     uniform mat4 projection_matrix;\n\
-    attribute vec3 position;\n\
-    attribute vec3 normal;\n\
+    in vec3 position;\n\
+    in vec3 normal;\n\
     \n\
-    varying vec3 vertex_normal;\n\
-    varying vec4 vertex_position;\n\
-    varying vec3 eye_direction;\n\
+    out vec3 vertex_normal;\n\
+    out vec4 vertex_position;\n\
+    out vec3 eye_direction;\n\
     \n\
     void main()\n\
     {\n\
@@ -211,9 +214,10 @@ static const char *gFragmentShaderText = "\n\
     uniform float material_shininess;\n\
     uniform vec4 light_position;\n\
     uniform vec4 light_color;\n\
-    varying vec3 vertex_normal;\n\
-    varying vec4 vertex_position;\n\
-    varying vec3 eye_direction;\n\
+    in vec3 vertex_normal;\n\
+    in vec4 vertex_position;\n\
+    in vec3 eye_direction;\n\
+    out vec4 color;\n\
     \n\
     vec3 unitvec(vec4 p1, vec4 p2)\n\
     {\n\
@@ -245,14 +249,14 @@ static const char *gFragmentShaderText = "\n\
         ambientsum += light_color * .2;\n\
         specularsum += pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
-        gl_FragColor = diffusesum * material_diffuse + ambientsum * material_ambient + specularsum * material_specular;\n\
+        color = diffusesum * material_diffuse + ambientsum * material_ambient + specularsum * material_specular;\n\
     }\n";
 
 static GLuint GenerateProgram()
 {
     std::string spec_string;
 
-    spec_string = "#version 120\n";
+    spec_string = "#version 140\n";
 
     // reset line number so that I can view errors with the line number
     // they have in the base shaders.
@@ -295,14 +299,29 @@ static GLuint GenerateProgram()
 
 void InitializeObject()
 {
-    // GLuint vao;
-    // glGenVertexArrays(1, &vao);
-    // glBindVertexArray(vao);
+    CheckOpenGL(__FILE__, __LINE__);
+    glGenVertexArrays(1, &gVertexArray);
+    CheckOpenGL(__FILE__, __LINE__);
+    glBindVertexArray(gVertexArray);
+    CheckOpenGL(__FILE__, __LINE__);
 
-    // glGenBuffers(1, &gVertexBuffer);
+    glGenBuffers(1, &gVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * gTriangleCount * 3, gVertices, GL_STATIC_DRAW);
+    CheckOpenGL(__FILE__, __LINE__);
 
-    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+    size_t stride = sizeof(Vertex);
+    size_t normalOffset = sizeof(float) * 3;
+
+    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(kPositionAttrib);
+
+    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(kNormalAttrib);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    glBindVertexArray(GL_NONE);
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 void DrawObject(float objectTime, bool drawWireframe)
@@ -317,18 +336,10 @@ void DrawObject(float objectTime, bool drawWireframe)
     glUniform4fv(gMaterialDiffuseUniform, 1, objectDiffuse);
     glUniform4fv(gMaterialSpecularUniform, 1, objectSpecular);
     glUniform1f(gMaterialShininessUniform, objectShininess);
+    CheckOpenGL(__FILE__, __LINE__);
 
-    size_t stride = sizeof(gVertices[0]);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
-    // glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    // glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, sizeof(float * 3));
-
-    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].v[0]);
-    glEnableVertexAttribArray(kPositionAttrib);
-
-    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].n[0]);
-    glEnableVertexAttribArray(kNormalAttrib);
+    glBindVertexArray(gVertexArray);
+    CheckOpenGL(__FILE__, __LINE__);
 
     if(drawWireframe) {
         for(int i = 0; i < gTriangleCount; i++)
@@ -337,8 +348,6 @@ void DrawObject(float objectTime, bool drawWireframe)
         glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
     }
 
-    glDisableVertexAttribArray(kPositionAttrib);
-    glDisableVertexAttribArray(kNormalAttrib);
     CheckOpenGL(__FILE__, __LINE__);
 }
 
@@ -393,8 +402,6 @@ void InitializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    glEnable(GL_NORMALIZE);
-
     gProgram = GenerateProgram();
     CheckOpenGL(__FILE__, __LINE__);
 
@@ -428,6 +435,8 @@ static void InitializeModel()
     gObjectManip->calculate_matrix();
 
     gCurrentManip = gSceneManip;
+
+    InitializeObject();
 }
 
 static void ErrorCallback(int error, const char* description)
@@ -549,11 +558,10 @@ int main()
     if(!glfwInit())
         exit(EXIT_FAILURE);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    // XXX Move to OpenGL 3.2 and uncomment these:
-    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
 
     glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(gWindowWidth = 512, gWindowHeight = 512, "Spin", NULL, NULL);
