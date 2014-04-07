@@ -127,7 +127,7 @@ manipulator::manipulator(const box& bounds, float fov)
     m_reference_size = bounds.largest_side();
     m_motion_scale = 1.0;
 
-    m_translation.set(0, 0, -m_reference_size / cosf(fov / 2.0));
+    m_translation.set(0, 0, -m_reference_size / cosf(fov));
 
     m_rotation.set(0, 1, 0, 0);
 
