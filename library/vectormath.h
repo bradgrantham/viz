@@ -528,6 +528,7 @@ struct mat4f
 
 	return *this;
     }
+    mat4f& transpose() { return transpose(*this); }
 
     inline float determinant() const {
 	return (m_v[0] * m_v[5] - m_v[1] * m_v[4]) *

@@ -23,6 +23,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
 #include <OpenGL/glext.h>
 // should not include GL and also #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
@@ -58,7 +59,59 @@ bool gVerbose = true;
 //----------------------------------------------------------------------------
 // Actual GL functions
 
-#define CHECK_OPENGL(l) {int _glerr ; if((_glerr = glGetError()) != GL_NO_ERROR) printf("GL Error: %04X at %d\n", _glerr, l); }
+#if 1
+
+static void CheckOpenGL(const char *filename, int line)
+{
+    int glerr;
+
+    if((glerr = glGetError()) != GL_NO_ERROR) {
+        printf("GL Error: %s(%04X) at %s:%d\n", gluErrorString(glerr), glerr,
+            filename, line);
+    }
+}
+
+#else  // XXX not supported in MacOS
+
+const bool kDebugGL = true;
+
+void QueryLog(void)
+{
+    GLint totalMessages, len;
+
+    glGetIntegerv(GL_DEBUG_LOGGED_MESSAGES_ARB, &totalMessages);
+    printf("Number of messages in the log:%d\n", totalMessages);
+
+    for(int i = 0; i < totalMessages; i++) {
+        GLenum source, type, id, severity;
+
+        glGetIntegerv(GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH_ARB, &len);
+        char *message = new char[len];
+
+        glGetDebugMessageLogARB(1, len, &source, &type, &id, &severity, NULL, message);
+
+        printf("GL: \"%s\"\n", message);
+
+        delete[] message;
+    }
+}
+
+static void CheckOpenGL(const char *filename, int line)
+{
+    int glerr;
+
+    if((glerr = glGetError()) != GL_NO_ERROR) {
+        if(kDebugGL) {
+            printf("GL Error discovered at %s:%d\n", filename, line);
+            QueryLog();
+        }
+        else
+            printf("GL Error: %s(%04X) at %s:%d\n", gluErrorString(glerr), glerr,
+                filename, line);
+    }
+}
+
+#endif
 
 static bool CheckShaderCompile(GLuint shader, const std::string& shader_name)
 {
@@ -109,10 +162,15 @@ static bool CheckProgramLink(GLuint program)
 }
 
 GLuint gVertexBuffer;
+GLuint gModelviewUniform;
+GLuint gModelviewNormalUniform;
+GLuint gProjectionUniform;
+const int kPositionAttrib = 0; 
+const int kNormalAttrib = 1; 
 
 void InitializeObject()
 {
-    GLuint vao;
+    // GLuint vao;
     // glGenVertexArrays(1, &vao);
     // glBindVertexArray(vao);
 
@@ -124,7 +182,7 @@ void InitializeObject()
 
 void DrawObject(float objectTime, bool drawWireframe)
 {
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 
     static float objectAmbient[4] = {.1, .1, .1, 1};
     static float objectDiffuse[4] = {.8, .8, .8, 1};
@@ -136,14 +194,24 @@ void DrawObject(float objectTime, bool drawWireframe)
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, objectSpecular);
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, objectShininess);
 
-    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
     size_t stride = sizeof(gVertices[0]);
+
+    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    // glEnableClientState(GL_VERTEX_ARRAY);
+    // glEnableClientState(GL_NORMAL_ARRAY);
     // glVertexPointer(3, GL_FLOAT, stride, 0);
     // glNormalPointer(GL_FLOAT, stride, sizeof(float) * 3);
-    glVertexPointer(3, GL_FLOAT, stride, (void*)&gVertices[0].v[0]); 
-    glNormalPointer(GL_FLOAT, stride, (void*)&gVertices[0].n[0]);
+    // glVertexPointer(3, GL_FLOAT, stride, (void*)&gVertices[0].v[0]); 
+    // glNormalPointer(GL_FLOAT, stride, (void*)&gVertices[0].n[0]);
+
+    // glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    // glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, sizeof(float * 3));
+
+    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].v[0]);
+    glEnableVertexAttribArray(kPositionAttrib);
+
+    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].n[0]);
+    glEnableVertexAttribArray(kNormalAttrib);
 
     if(drawWireframe) {
         for(int i = 0; i < gTriangleCount; i++)
@@ -154,31 +222,30 @@ void DrawObject(float objectTime, bool drawWireframe)
 
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_NORMAL_ARRAY);
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 GLuint gProgram;
 
 static const char *gVertexShaderText = "\n\
+    uniform mat4 modelview_matrix;\n\
+    uniform mat4 modelview_normal_matrix;\n\
+    uniform mat4 projection_matrix;\n\
+    attribute vec3 position;\n\
+    attribute vec3 normal;\n\
+    \n\
     varying vec3 vertex_normal;\n\
     varying vec4 vertex_position;\n\
     varying vec3 eye_direction;\n\
     \n\
-    vec3 unitvec(vec4 p1, vec4 p2)\n\
-    {\n\
-        if(p1.w == 0)\n\
-            return vec3(-p1);\n\
-        return p2.xyz / p2.w - p1.xyz / p1.w;\n\
-    }\n\
-    \n\
     void main()\n\
     {\n\
     \n\
-        vertex_normal = gl_NormalMatrix * gl_Normal;\n\
-        vertex_position = gl_ModelViewMatrix * gl_Vertex;\n\
-        eye_direction = unitvec(vertex_position, vec4(0, 0, 0, 1));\n\
+        vertex_normal = (modelview_normal_matrix * vec4(normal, 0.0)).xyz;\n\
+        vertex_position = modelview_matrix * vec4(position, 1.0);\n\
+        eye_direction = -vertex_position.xyz;\n\
     \n\
-        gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * gl_Vertex;\n\
+        gl_Position = projection_matrix * modelview_matrix * vec4(position, 1.0);\n\
         ;\n\
     }\n";
 
@@ -259,9 +326,17 @@ static GLuint GenerateProgram()
     GLuint program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
+
+    // XXX Really need to do this generically
+    glBindAttribLocation(program, kPositionAttrib, "position");
+    glBindAttribLocation(program, kNormalAttrib, "normal");
+    CheckOpenGL(__FILE__, __LINE__);
+
     glLinkProgram(program);
+    CheckOpenGL(__FILE__, __LINE__);
     if(!CheckProgramLink(program))
 	return 0;
+    CheckOpenGL(__FILE__, __LINE__);
 
     return program;
 }
@@ -269,7 +344,7 @@ static GLuint GenerateProgram()
 void InitializeGL()
 {
     glClearColor(.25, .25, .25, 0);
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 
     glEnable(GL_LIGHT0);
     glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, 1);
@@ -282,7 +357,7 @@ void InitializeGL()
     // glLightfv(GL_LIGHT1, GL_SPECULAR, light1_color);
 
     glEnable(GL_LIGHTING);
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -290,13 +365,16 @@ void InitializeGL()
     glEnable(GL_NORMALIZE);
 
     gProgram = GenerateProgram();
-
-    // glBindAttribLocation(gProgram, POSITION_ATTRIB, "position");
-    // glBindAttribLocation(gProgram, COLOR_ATTRIB, "color");
+    CheckOpenGL(__FILE__, __LINE__);
 
     glUseProgram(gProgram);
+    CheckOpenGL(__FILE__, __LINE__);
 
-    CHECK_OPENGL(__LINE__);
+    gModelviewUniform = glGetUniformLocation(gProgram, "modelview_matrix");
+    gModelviewNormalUniform = glGetUniformLocation(gProgram, "modelview_normal_matrix");
+    gProjectionUniform = glGetUniformLocation(gProgram, "projection_matrix");
+
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 float gFOV = 45;
@@ -414,14 +492,9 @@ static void ScrollCallback(GLFWwindow *window, double dx, double dy)
 
 static void DrawFrame(GLFWwindow *window)
 {
-    float nearClip, farClip;
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 
-    float frustumLeft, frustumRight, frustumBottom, frustumTop;
-    frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2);
-    frustumBottom = -frustumTop;
-    frustumLeft = frustumBottom * gWindowWidth / gWindowHeight;
-    frustumRight = frustumTop * gWindowWidth / gWindowHeight;
+    float nearClip, farClip;
 
     /* XXX - need to create new box from all subordinate boxes */
     nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
@@ -431,20 +504,29 @@ static void DrawFrame(GLFWwindow *window)
     if(farClip < 0.2 * gSceneManip->m_reference_size)
 	nearClip = 0.2 * gSceneManip->m_reference_size;
 
-    glMatrixMode(GL_PROJECTION);
-    mat4f projection = mat4f::frustum(frustumLeft * nearClip, frustumRight * nearClip, frustumBottom * nearClip, frustumTop * nearClip, nearClip, farClip);
-    glLoadMatrixf(projection.m_v);
-    CHECK_OPENGL(__LINE__);
+    float frustumLeft, frustumRight, frustumBottom, frustumTop;
+    frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
+    frustumBottom = -frustumTop;
+    frustumLeft = frustumBottom * gWindowWidth / gWindowHeight;
+    frustumRight = frustumTop * gWindowWidth / gWindowHeight;
+
+    mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
+    glUniformMatrix4fv(gProjectionUniform, 1, GL_FALSE, projection.m_v);
+    CheckOpenGL(__FILE__, __LINE__);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glMatrixMode(GL_MODELVIEW);
-    CHECK_OPENGL(__LINE__);
+    CheckOpenGL(__FILE__, __LINE__);
 
     /* draw floor, draw shadow, etc */
 
     mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
-    glLoadMatrixf(modelview.m_v);
+    mat4f modelview_normal = modelview;
+    // XXX should not invert every time; parallel normal matrix math path?
+    modelview_normal.transpose();
+    modelview_normal.invert();
+    glUniformMatrix4fv(gModelviewUniform, 1, GL_FALSE, modelview.m_v);
+    glUniformMatrix4fv(gModelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
     DrawObject(0, gDrawWireframe);
 }
 
