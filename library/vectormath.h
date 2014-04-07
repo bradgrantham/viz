@@ -564,6 +564,29 @@ struct mat4f
 	return m;
     }
 
+    static inline mat4f frustum(float left, float right, float bottom, float top, float nearClip, float farClip)
+    {
+        mat4f m(identity);
+
+        float A = (right + left) / (right - left);
+        float B = (top + bottom) / (top - bottom);
+        float C = - (farClip + nearClip) / (farClip - nearClip);
+        float D = - 2 * farClip * nearClip / (farClip - nearClip);
+
+        m[0] = 2 * nearClip / (right - left);
+        m[5] = 2 * nearClip / (top - bottom);
+
+        m[2] = A;
+        m[6] = B;
+        m[10] = C;
+        m[14] = D;
+
+        m[11] = -1;
+        m[15] = 0;
+
+        return m;
+    }
+
     static inline mat4f rotation(float a, float x, float y, float z) {
 	mat4f m;
 	float c, s, t;

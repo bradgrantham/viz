@@ -431,8 +431,8 @@ static void DrawFrame(GLFWwindow *window)
 	nearClip = 0.2 * gSceneManip->m_reference_size;
 
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(frustumLeft * nearClip, frustumRight * nearClip, frustumBottom * nearClip, frustumTop * nearClip, nearClip, farClip); // MATRIX: frustum
+    mat4f f = mat4f::frustum(frustumLeft * nearClip, frustumRight * nearClip, frustumBottom * nearClip, frustumTop * nearClip, nearClip, farClip);
+    glLoadMatrixf(f.m_v);
     CHECK_OPENGL(__LINE__);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
