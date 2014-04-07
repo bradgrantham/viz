@@ -165,67 +165,21 @@ GLuint gVertexBuffer;
 GLuint gModelviewUniform;
 GLuint gModelviewNormalUniform;
 GLuint gProjectionUniform;
+
+GLuint gMaterialDiffuseUniform;
+GLuint gMaterialAmbientUniform;
+GLuint gMaterialSpecularUniform;
+GLuint gMaterialShininessUniform;
+
+GLuint gLightPositionUniform;
+GLuint gLightColorUniform;
+
 const int kPositionAttrib = 0; 
 const int kNormalAttrib = 1; 
 
-void InitializeObject()
-{
-    // GLuint vao;
-    // glGenVertexArrays(1, &vao);
-    // glBindVertexArray(vao);
-
-    // glGenBuffers(1, &gVertexBuffer);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
-}
-
-void DrawObject(float objectTime, bool drawWireframe)
-{
-    CheckOpenGL(__FILE__, __LINE__);
-
-    static float objectAmbient[4] = {.1, .1, .1, 1};
-    static float objectDiffuse[4] = {.8, .8, .8, 1};
-    static float objectSpecular[4] = {.5, .5, .5, 1};
-    static float objectShininess = 50;
-
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, objectAmbient);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, objectDiffuse);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, objectSpecular);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, objectShininess);
-
-    size_t stride = sizeof(gVertices[0]);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
-    // glEnableClientState(GL_VERTEX_ARRAY);
-    // glEnableClientState(GL_NORMAL_ARRAY);
-    // glVertexPointer(3, GL_FLOAT, stride, 0);
-    // glNormalPointer(GL_FLOAT, stride, sizeof(float) * 3);
-    // glVertexPointer(3, GL_FLOAT, stride, (void*)&gVertices[0].v[0]); 
-    // glNormalPointer(GL_FLOAT, stride, (void*)&gVertices[0].n[0]);
-
-    // glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    // glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, sizeof(float * 3));
-
-    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].v[0]);
-    glEnableVertexAttribArray(kPositionAttrib);
-
-    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].n[0]);
-    glEnableVertexAttribArray(kNormalAttrib);
-
-    if(drawWireframe) {
-        for(int i = 0; i < gTriangleCount; i++)
-            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
-    } else {
-        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
-    }
-
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_NORMAL_ARRAY);
-    CheckOpenGL(__FILE__, __LINE__);
-}
-
 GLuint gProgram;
+
+float gFOV = 45;
 
 static const char *gVertexShaderText = "\n\
     uniform mat4 modelview_matrix;\n\
@@ -251,6 +205,12 @@ static const char *gVertexShaderText = "\n\
 
 
 static const char *gFragmentShaderText = "\n\
+    uniform vec4 material_diffuse;\n\
+    uniform vec4 material_specular;\n\
+    uniform vec4 material_ambient;\n\
+    uniform float material_shininess;\n\
+    uniform vec4 light_position;\n\
+    uniform vec4 light_color;\n\
     varying vec3 vertex_normal;\n\
     varying vec4 vertex_position;\n\
     varying vec3 eye_direction;\n\
@@ -268,10 +228,6 @@ static const char *gFragmentShaderText = "\n\
     \n\
     void main()\n\
     {\n\
-        vec4 diffuse = gl_FrontMaterial.diffuse;\n\
-        vec4 ambient = gl_FrontMaterial.ambient;\n\
-        vec4 specular = gl_FrontMaterial.specular;\n\
-        float shininess = gl_FrontMaterial.shininess;\n\
         vec4 diffusesum = vec4(0, 0, 0, 0);\n\
         vec4 specularsum = vec4(0, 0, 0, 0);\n\
         vec4 ambientsum = vec4(0, 0, 0, 0);\n\
@@ -281,19 +237,15 @@ static const char *gFragmentShaderText = "\n\
         int light;\n\
         vec3 edir = normalize(eye_direction);\n\
     \n\
-        for(light = 0; light < gl_MaxLights; light++) {\n\
-            if(gl_LightSource[light].spotExponent > 0) {\n\
-                vec4 light_pos = gl_LightSource[light].position;\n\
-                vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
-                vec3 refl = reflect(-ldir, normal);\n\
+        vec4 light_pos = light_position;\n\
+        vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
+        vec3 refl = reflect(-ldir, normal);\n\
+\n\
+        diffusesum += max(0, dot(normal, ldir)) * light_color * .8;\n\
+        ambientsum += light_color * .2;\n\
+        specularsum += pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
-                diffusesum += max(0, dot(normal, ldir)) * gl_LightSource[light].diffuse;\n\
-                ambientsum += gl_LightSource[light].ambient;\n\
-                specularsum += pow(max(0, dot(refl, edir)), shininess) * gl_LightSource[light].specular;\n\
-            }\n\
-        }\n\
-    \n\
-        gl_FragColor = /* vec4(normal.x / 2 + .5, normal.y / 2 + .5, normal.z / 2 + .5, 1); */ diffusesum * diffuse + ambientsum * ambient + specularsum * specular;\n\
+        gl_FragColor = diffusesum * material_diffuse + ambientsum * material_ambient + specularsum * material_specular;\n\
     }\n";
 
 static GLuint GenerateProgram()
@@ -341,22 +293,101 @@ static GLuint GenerateProgram()
     return program;
 }
 
+void InitializeObject()
+{
+    // GLuint vao;
+    // glGenVertexArrays(1, &vao);
+    // glBindVertexArray(vao);
+
+    // glGenBuffers(1, &gVertexBuffer);
+
+    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+}
+
+void DrawObject(float objectTime, bool drawWireframe)
+{
+    CheckOpenGL(__FILE__, __LINE__);
+
+    static float objectDiffuse[4] = {.8, .7, .6, 1};
+    static float objectSpecular[4] = {1, 1, 1, 1};
+    static float objectShininess = 50;
+
+    glUniform4fv(gMaterialAmbientUniform, 1, objectDiffuse);
+    glUniform4fv(gMaterialDiffuseUniform, 1, objectDiffuse);
+    glUniform4fv(gMaterialSpecularUniform, 1, objectSpecular);
+    glUniform1f(gMaterialShininessUniform, objectShininess);
+
+    size_t stride = sizeof(gVertices[0]);
+
+    // glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    // glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    // glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, sizeof(float * 3));
+
+    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].v[0]);
+    glEnableVertexAttribArray(kPositionAttrib);
+
+    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, &gVertices[0].n[0]);
+    glEnableVertexAttribArray(kNormalAttrib);
+
+    if(drawWireframe) {
+        for(int i = 0; i < gTriangleCount; i++)
+            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+    } else {
+        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
+    }
+
+    glDisableVertexAttribArray(kPositionAttrib);
+    glDisableVertexAttribArray(kNormalAttrib);
+    CheckOpenGL(__FILE__, __LINE__);
+}
+
+void DrawScene()
+{
+    float nearClip, farClip;
+
+    /* XXX - need to create new box from all subordinate boxes */
+    nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
+    farClip = - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
+    if(nearClip < 0.1 * gSceneManip->m_reference_size)
+	nearClip = 0.1 * gSceneManip->m_reference_size;
+    if(farClip < 0.2 * gSceneManip->m_reference_size)
+	nearClip = 0.2 * gSceneManip->m_reference_size;
+
+    float frustumLeft, frustumRight, frustumBottom, frustumTop;
+    frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
+    frustumBottom = -frustumTop;
+    frustumLeft = frustumBottom * gWindowWidth / gWindowHeight;
+    frustumRight = frustumTop * gWindowWidth / gWindowHeight;
+
+    mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
+    glUniformMatrix4fv(gProjectionUniform, 1, GL_FALSE, projection.m_v);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    float lightPosition[4] = {0, 0, 1, 0};
+    float lightColor[4] = {1, 1, 1, 1};
+    glUniform4fv(gLightPositionUniform, 1, lightPosition);
+    glUniform4fv(gLightColorUniform, 1, lightColor);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    /* draw floor, draw shadow, etc */
+
+    mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
+    mat4f modelview_normal = modelview;
+    // XXX should not invert every time; parallel normal matrix math path?
+    modelview_normal.transpose();
+    modelview_normal.invert();
+    glUniformMatrix4fv(gModelviewUniform, 1, GL_FALSE, modelview.m_v);
+    glUniformMatrix4fv(gModelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
+    DrawObject(0, gDrawWireframe);
+}
+
+
 void InitializeGL()
 {
     glClearColor(.25, .25, .25, 0);
     CheckOpenGL(__FILE__, __LINE__);
 
-    glEnable(GL_LIGHT0);
-    glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, 1);
-
-    // glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_color);
-    // glLightfv(GL_LIGHT0, GL_SPECULAR, light0_color);
-
-    // glEnable(GL_LIGHT1);
-    // glLightfv(GL_LIGHT1, GL_DIFFUSE, light1_color);
-    // glLightfv(GL_LIGHT1, GL_SPECULAR, light1_color);
-
-    glEnable(GL_LIGHTING);
     CheckOpenGL(__FILE__, __LINE__);
 
     glEnable(GL_DEPTH_TEST);
@@ -370,14 +401,20 @@ void InitializeGL()
     glUseProgram(gProgram);
     CheckOpenGL(__FILE__, __LINE__);
 
+    gMaterialDiffuseUniform = glGetUniformLocation(gProgram, "material_diffuse");
+    gMaterialSpecularUniform = glGetUniformLocation(gProgram, "material_specular");
+    gMaterialAmbientUniform = glGetUniformLocation(gProgram, "material_ambient");
+    gMaterialShininessUniform = glGetUniformLocation(gProgram, "material_shininess");
+
+    gLightPositionUniform = glGetUniformLocation(gProgram, "light_position");
+    gLightColorUniform = glGetUniformLocation(gProgram, "light_color");
+
     gModelviewUniform = glGetUniformLocation(gProgram, "modelview_matrix");
     gModelviewNormalUniform = glGetUniformLocation(gProgram, "modelview_normal_matrix");
     gProjectionUniform = glGetUniformLocation(gProgram, "projection_matrix");
 
     CheckOpenGL(__FILE__, __LINE__);
 }
-
-float gFOV = 45;
 
 static void InitializeModel()
 {
@@ -494,40 +531,13 @@ static void DrawFrame(GLFWwindow *window)
 {
     CheckOpenGL(__FILE__, __LINE__);
 
-    float nearClip, farClip;
-
-    /* XXX - need to create new box from all subordinate boxes */
-    nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
-    farClip = - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
-    if(nearClip < 0.1 * gSceneManip->m_reference_size)
-	nearClip = 0.1 * gSceneManip->m_reference_size;
-    if(farClip < 0.2 * gSceneManip->m_reference_size)
-	nearClip = 0.2 * gSceneManip->m_reference_size;
-
-    float frustumLeft, frustumRight, frustumBottom, frustumTop;
-    frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
-    frustumBottom = -frustumTop;
-    frustumLeft = frustumBottom * gWindowWidth / gWindowHeight;
-    frustumRight = frustumTop * gWindowWidth / gWindowHeight;
-
-    mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
-    glUniformMatrix4fv(gProjectionUniform, 1, GL_FALSE, projection.m_v);
-    CheckOpenGL(__FILE__, __LINE__);
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     CheckOpenGL(__FILE__, __LINE__);
 
-    /* draw floor, draw shadow, etc */
+    DrawScene();
 
-    mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
-    mat4f modelview_normal = modelview;
-    // XXX should not invert every time; parallel normal matrix math path?
-    modelview_normal.transpose();
-    modelview_normal.invert();
-    glUniformMatrix4fv(gModelviewUniform, 1, GL_FALSE, modelview.m_v);
-    glUniformMatrix4fv(gModelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
-    DrawObject(0, gDrawWireframe);
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 int main()
