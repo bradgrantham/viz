@@ -431,8 +431,8 @@ static void DrawFrame(GLFWwindow *window)
 	nearClip = 0.2 * gSceneManip->m_reference_size;
 
     glMatrixMode(GL_PROJECTION);
-    mat4f f = mat4f::frustum(frustumLeft * nearClip, frustumRight * nearClip, frustumBottom * nearClip, frustumTop * nearClip, nearClip, farClip);
-    glLoadMatrixf(f.m_v);
+    mat4f projection = mat4f::frustum(frustumLeft * nearClip, frustumRight * nearClip, frustumBottom * nearClip, frustumTop * nearClip, nearClip, farClip);
+    glLoadMatrixf(projection.m_v);
     CHECK_OPENGL(__LINE__);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -440,19 +440,11 @@ static void DrawFrame(GLFWwindow *window)
     glMatrixMode(GL_MODELVIEW);
     CHECK_OPENGL(__LINE__);
 
-    glLoadMatrixf((float *)gSceneManip->m_matrix.m_v); // MATRIX: mult matrices
-    CHECK_OPENGL(__LINE__);
-
     /* draw floor, draw shadow, etc */
-    CHECK_OPENGL(__LINE__);
 
-    glPushMatrix();
-
-    glMultMatrixf((float *)gObjectManip->m_matrix.m_v); // MATRIX: mult matrices
+    mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
+    glLoadMatrixf(modelview.m_v);
     DrawObject(0, gDrawWireframe);
-
-    glPopMatrix();
-
 }
 
 int main()
