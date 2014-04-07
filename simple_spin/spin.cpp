@@ -178,7 +178,8 @@ static const char *gVertexShaderText = "\n\
         vertex_position = gl_ModelViewMatrix * gl_Vertex;\n\
         eye_direction = unitvec(vertex_position, vec4(0, 0, 0, 1));\n\
     \n\
-        gl_Position = ftransform();\n\
+        gl_Position = gl_ProjectionMatrix * gl_ModelViewMatrix * gl_Vertex;\n\
+        ;\n\
     }\n";
 
 
