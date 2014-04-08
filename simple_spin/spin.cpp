@@ -21,14 +21,8 @@
 #include <algorithm>
 #include <unistd.h>
 
-// #define GLFW_INCLUDE_NONE
-// #include <OpenGL/gl.h>
-// #include <OpenGL/glu.h>
-// #include <OpenGL/glext.h>
-// should not include GL and also #define GLFW_INCLUDE_GLCOREARB
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
-
 
 #include "vectormath.h"
 #include "geometry.h"
@@ -61,8 +55,6 @@ bool gVerbose = true;
 //----------------------------------------------------------------------------
 // Actual GL functions
 
-#if 1
-
 static void CheckOpenGL(const char *filename, int line)
 {
     int glerr;
@@ -71,48 +63,6 @@ static void CheckOpenGL(const char *filename, int line)
         printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
     }
 }
-
-#else  // XXX not supported in MacOS
-
-const bool kDebugGL = true;
-
-void QueryLog(void)
-{
-    GLint totalMessages, len;
-
-    glGetIntegerv(GL_DEBUG_LOGGED_MESSAGES_ARB, &totalMessages);
-    printf("Number of messages in the log:%d\n", totalMessages);
-
-    for(int i = 0; i < totalMessages; i++) {
-        GLenum source, type, id, severity;
-
-        glGetIntegerv(GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH_ARB, &len);
-        char *message = new char[len];
-
-        glGetDebugMessageLogARB(1, len, &source, &type, &id, &severity, NULL, message);
-
-        printf("GL: \"%s\"\n", message);
-
-        delete[] message;
-    }
-}
-
-static void CheckOpenGL(const char *filename, int line)
-{
-    int glerr;
-
-    if((glerr = glGetError()) != GL_NO_ERROR) {
-        if(kDebugGL) {
-            printf("GL Error discovered at %s:%d\n", filename, line);
-            QueryLog();
-        }
-        else
-            printf("GL Error: %s(%04X) at %s:%d\n", gluErrorString(glerr), glerr,
-                filename, line);
-    }
-}
-
-#endif
 
 static bool CheckShaderCompile(GLuint shader, const std::string& shader_name)
 {
@@ -212,8 +162,10 @@ static const char *gFragmentShaderText = "\n\
     uniform vec4 material_specular;\n\
     uniform vec4 material_ambient;\n\
     uniform float material_shininess;\n\
+    \n\
     uniform vec4 light_position;\n\
     uniform vec4 light_color;\n\
+    \n\
     in vec3 vertex_normal;\n\
     in vec4 vertex_position;\n\
     in vec3 eye_direction;\n\
@@ -232,10 +184,6 @@ static const char *gFragmentShaderText = "\n\
     \n\
     void main()\n\
     {\n\
-        vec4 diffusesum = vec4(0, 0, 0, 0);\n\
-        vec4 specularsum = vec4(0, 0, 0, 0);\n\
-        vec4 ambientsum = vec4(0, 0, 0, 0);\n\
-    \n\
         vec3 normal = normalize(vertex_normal);\n\
     \n\
         int light;\n\
@@ -245,11 +193,11 @@ static const char *gFragmentShaderText = "\n\
         vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
         vec3 refl = reflect(-ldir, normal);\n\
 \n\
-        diffusesum += max(0, dot(normal, ldir)) * light_color * .8;\n\
-        ambientsum += light_color * .2;\n\
-        specularsum += pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
+        vec4 diffuse = max(0, dot(normal, ldir)) * light_color * .8;\n\
+        vec4 ambient = light_color * .2;\n\
+        vec4 specular = pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
-        color = diffusesum * material_diffuse + ambientsum * material_ambient + specularsum * material_specular;\n\
+        color = diffuse * material_diffuse + ambient * material_ambient + specular * material_specular;\n\
     }\n";
 
 static GLuint GenerateProgram()
@@ -292,16 +240,13 @@ static GLuint GenerateProgram()
     CheckOpenGL(__FILE__, __LINE__);
     if(!CheckProgramLink(program))
 	return 0;
-    CheckOpenGL(__FILE__, __LINE__);
 
     return program;
 }
 
 void InitializeObject()
 {
-    CheckOpenGL(__FILE__, __LINE__);
     glGenVertexArrays(1, &gVertexArray);
-    CheckOpenGL(__FILE__, __LINE__);
     glBindVertexArray(gVertexArray);
     CheckOpenGL(__FILE__, __LINE__);
 
@@ -321,7 +266,6 @@ void InitializeObject()
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(GL_NONE);
-    CheckOpenGL(__FILE__, __LINE__);
 }
 
 void DrawObject(float objectTime, bool drawWireframe)
@@ -394,10 +338,8 @@ void DrawScene()
 
 void InitializeGL()
 {
+    CheckOpenGL(__FILE__, __LINE__);
     glClearColor(.25, .25, .25, 0);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    CheckOpenGL(__FILE__, __LINE__);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
