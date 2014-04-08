@@ -366,8 +366,8 @@ void DrawScene()
     float frustumLeft, frustumRight, frustumBottom, frustumTop;
     frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
     frustumBottom = -frustumTop;
-    frustumLeft = frustumBottom * gWindowWidth / gWindowHeight;
     frustumRight = frustumTop * gWindowWidth / gWindowHeight;
+    frustumLeft = -frustumRight;
 
     mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
     glUniformMatrix4fv(gProjectionUniform, 1, GL_FALSE, projection.m_v);
@@ -486,7 +486,7 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
 static void ResizeCallback(GLFWwindow *window, int x, int y)
 {
     glfwGetFramebufferSize(window, &gWindowWidth, &gWindowHeight);
-    glViewport(0, 0, gWindowWidth, gWindowWidth);
+    glViewport(0, 0, gWindowWidth, gWindowHeight);
 }
 
 static void ButtonCallback(GLFWwindow *window, int b, int action, int mods)
