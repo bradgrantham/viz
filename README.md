@@ -7,6 +7,7 @@ Some guidelines:
 * code is primarily in C++
 * uses GLFW for windowing
 * uses OpenMP for threading (if possible)
+* GL core ARB 3.2 or greater for graphics
 
 Subtrees:
 * library - headers and implementations
