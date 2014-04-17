@@ -129,6 +129,7 @@ GLuint gLightColorUniform;
 
 const int kPositionAttrib = 0; 
 const int kNormalAttrib = 1; 
+const int kBlargAttrib = 2; 
 
 GLuint gProgram;
 
@@ -140,8 +141,10 @@ static const char *gVertexShaderText = "\n\
     uniform mat4 projection_matrix;\n\
     in vec3 position;\n\
     in vec3 normal;\n\
+    in vec4 blarg;\n\
     \n\
     out vec3 vertex_normal;\n\
+    out vec4 vertex_color;\n\
     out vec4 vertex_position;\n\
     out vec3 eye_direction;\n\
     \n\
@@ -150,6 +153,12 @@ static const char *gVertexShaderText = "\n\
     \n\
         vertex_normal = (modelview_normal_matrix * vec4(normal, 0.0)).xyz;\n\
         vertex_position = modelview_matrix * vec4(position, 1.0);\n\
+        if(blarg.x > .1)\n\
+            vertex_color = vec4(1, 0, 0, 1);\n\
+        else if(blarg.x < -.1)\n\
+            vertex_color = vec4(0, 1, 0, 1);\n\
+        else\n\
+            vertex_color = vec4(1, 1, 1, 1);\n\
         eye_direction = -vertex_position.xyz;\n\
     \n\
         gl_Position = projection_matrix * modelview_matrix * vec4(position, 1.0);\n\
@@ -167,6 +176,7 @@ static const char *gFragmentShaderText = "\n\
     uniform vec4 light_color;\n\
     \n\
     in vec3 vertex_normal;\n\
+    in vec4 vertex_color;\n\
     in vec4 vertex_position;\n\
     in vec3 eye_direction;\n\
     out vec4 color;\n\
@@ -197,7 +207,7 @@ static const char *gFragmentShaderText = "\n\
         vec4 ambient = light_color * .2;\n\
         vec4 specular = pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
-        color = diffuse * material_diffuse + ambient * material_ambient + specular * material_specular;\n\
+        color = vertex_color * (diffuse * material_diffuse + ambient * material_ambient) + specular * material_specular;\n\
     }\n";
 
 static GLuint GenerateProgram()
@@ -234,6 +244,7 @@ static GLuint GenerateProgram()
     // XXX Really need to do this generically
     glBindAttribLocation(program, kPositionAttrib, "position");
     glBindAttribLocation(program, kNormalAttrib, "normal");
+    glBindAttribLocation(program, kBlargAttrib, "attrib");
     CheckOpenGL(__FILE__, __LINE__);
 
     glLinkProgram(program);
@@ -257,12 +268,16 @@ void InitializeObject()
 
     size_t stride = sizeof(Vertex);
     size_t normalOffset = sizeof(float) * 3;
+    size_t blargOffset = normalOffset + sizeof(float) * 3;
 
     glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
     glEnableVertexAttribArray(kPositionAttrib);
 
     glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
     glEnableVertexAttribArray(kNormalAttrib);
+
+    glVertexAttribPointer(kBlargAttrib, 4, GL_BYTE, GL_TRUE, stride, (void*)blargOffset);
+    glEnableVertexAttribArray(kBlargAttrib);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(GL_NONE);

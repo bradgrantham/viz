@@ -18,6 +18,7 @@ struct Vertex
 {
     float v[3];
     float n[3];
+    unsigned char c[4];
 };
 
 extern struct Vertex gVertices[];
