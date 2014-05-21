@@ -14,6 +14,9 @@
 // limitations under the License.
 // 
 
+#ifndef _DRAWABLE_H_
+#define _DRAWABLE_H_
+
 #include <vector>
 
 #define GLFW_INCLUDE_GLCOREARB
@@ -77,3 +80,5 @@ struct DrawList
     std::vector<PrimInfo> prims;
     void Draw(bool drawWireframe);
 };
+
+#endif /* _DRAWABLE_H_ */
