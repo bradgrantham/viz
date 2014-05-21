@@ -94,12 +94,12 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
 }
 
 
-void PhongShader::ApplyMaterial(const Material& mtl)
+void PhongShader::ApplyMaterial(Material::sptr mtl)
 {
-    glUniform4fv(materialAmbientUniform, 1, mtl.diffuse);
-    glUniform4fv(materialDiffuseUniform, 1, mtl.ambient);
-    glUniform4fv(materialSpecularUniform, 1, mtl.specular);
-    glUniform1f(materialShininessUniform, mtl.shininess);
+    glUniform4fv(materialAmbientUniform, 1, mtl->diffuse);
+    glUniform4fv(materialDiffuseUniform, 1, mtl->ambient);
+    glUniform4fv(materialSpecularUniform, 1, mtl->specular);
+    glUniform1f(materialShininessUniform, mtl->shininess);
 }
 
 const char *PhongShader::vertexShaderText = "\n\

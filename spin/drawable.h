@@ -19,6 +19,9 @@
 
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
+
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
@@ -42,6 +45,7 @@ extern int gTriangleCount;
 
 struct Material
 {
+    typedef boost::shared_ptr<Material> sptr;
     float diffuse[4];
     float ambient[4];
     float specular[4];
@@ -65,6 +69,7 @@ struct Material
 
 struct DrawList
 {
+    typedef boost::shared_ptr<DrawList> sptr;
     struct PrimInfo {
         GLenum type;
         GLint start;

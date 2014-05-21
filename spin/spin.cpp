@@ -39,14 +39,12 @@ static manipulator *gObjectManip;
 static manipulator *gCurrentManip = NULL;
 
 static bool gDrawWireframe = false;
-
 static bool gStreamFrames = false;
 
 static int gWindowWidth;
 static int gWindowHeight;
 
 static double gMotionReported = false;
-
 static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
 
@@ -56,27 +54,49 @@ bool gVerbose = true;
 //----------------------------------------------------------------------------
 // Actual GL functions
 
-PhongShader gShader;
+PhongShader::sptr gShader;
 
-struct PhongShadedGeometry {
-    DrawList drawList;
-    Material material;
+struct PhongShadedGeometry
+{
+    typedef boost::shared_ptr<PhongShadedGeometry> sptr;
+
+    DrawList::sptr drawList;
+    Material::sptr material;
+    PhongShader::sptr phongshader;
+
+    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p) :
+        drawList(dl),
+        material(mtl),
+        phongshader(p)
+    {}
+
     void Draw(float objectTime, bool drawWireframe);
 };
 
-PhongShadedGeometry gShape;
+void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
+{
+    CheckOpenGL(__FILE__, __LINE__);
+
+    gShader->ApplyMaterial(material);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    drawList->Draw(drawWireframe);
+}
+
+PhongShadedGeometry::sptr gObject;
 
 void InitializeObject()
 {
     static float objectDiffuse[4] = {.8, .7, .6, 1};
     static float objectSpecular[4] = {1, 1, 1, 1};
     static float objectShininess = 50;
-    gShape.material = Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess);
+    Material::sptr mtl(new Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess));
 
-    glGenVertexArrays(1, &gShape.drawList.vertexArray);
-    glBindVertexArray(gShape.drawList.vertexArray);
-    gShape.drawList.indexed = false;
-    gShape.drawList.prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
+    DrawList::sptr drawlist(new DrawList);
+    glGenVertexArrays(1, &drawlist->vertexArray);
+    glBindVertexArray(drawlist->vertexArray);
+    drawlist->indexed = false;
+    drawlist->prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
     CheckOpenGL(__FILE__, __LINE__);
 
     GLuint vertexBuffer;
@@ -88,24 +108,16 @@ void InitializeObject()
     size_t stride = sizeof(Vertex);
     size_t normalOffset = sizeof(float) * 3;
 
-    glVertexAttribPointer(gShader.positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glEnableVertexAttribArray(gShader.positionAttrib);
+    glVertexAttribPointer(gShader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(gShader->positionAttrib);
 
-    glVertexAttribPointer(gShader.normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
-    glEnableVertexAttribArray(gShader.normalAttrib);
+    glVertexAttribPointer(gShader->normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(gShader->normalAttrib);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(GL_NONE);
-}
 
-void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
-{
-    CheckOpenGL(__FILE__, __LINE__);
-
-    gShader.ApplyMaterial(material);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    drawList.Draw(drawWireframe);
+    gObject = PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, gShader));
 }
 
 float gFOV = 45;
@@ -129,13 +141,13 @@ void DrawScene()
     frustumLeft = -frustumRight;
 
     mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
-    glUniformMatrix4fv(gShader.projectionUniform, 1, GL_FALSE, projection.m_v);
+    glUniformMatrix4fv(gShader->projectionUniform, 1, GL_FALSE, projection.m_v);
     CheckOpenGL(__FILE__, __LINE__);
 
     float lightPosition[4] = {0, 0, 1, 0};
     float lightColor[4] = {1, 1, 1, 1};
-    glUniform4fv(gShader.lightPositionUniform, 1, lightPosition);
-    glUniform4fv(gShader.lightColorUniform, 1, lightColor);
+    glUniform4fv(gShader->lightPositionUniform, 1, lightPosition);
+    glUniform4fv(gShader->lightColorUniform, 1, lightColor);
     CheckOpenGL(__FILE__, __LINE__);
 
     /* draw floor, draw shadow, etc */
@@ -145,9 +157,9 @@ void DrawScene()
     // XXX should not invert every time; parallel normal matrix math path?
     modelview_normal.transpose();
     modelview_normal.invert();
-    glUniformMatrix4fv(gShader.modelviewUniform, 1, GL_FALSE, modelview.m_v);
-    glUniformMatrix4fv(gShader.modelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
-    gShape.Draw(0, gDrawWireframe);
+    glUniformMatrix4fv(gShader->modelviewUniform, 1, GL_FALSE, modelview.m_v);
+    glUniformMatrix4fv(gShader->modelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
+    gObject->Draw(0, gDrawWireframe);
 }
 
 void InitializeGL()
@@ -158,12 +170,18 @@ void InitializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    gShader.Setup();
+    gShader = PhongShader::sptr(new PhongShader);
+    gShader->Setup();
 
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-static void InitializeModel()
+void TeardownGL()
+{
+    gShader = PhongShader::sptr();
+}
+
+static void InitializeScene()
 {
     box bounds;
     for(int i = 0; i < gTriangleCount * 3; i++)
@@ -314,7 +332,7 @@ int main()
     glfwMakeContextCurrent(window);
 
     InitializeGL();
-    InitializeModel();
+    InitializeScene();
 
     if(gVerbose) {
         printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));

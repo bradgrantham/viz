@@ -4,6 +4,8 @@
 
 struct PhongShader
 {
+    typedef boost::shared_ptr<PhongShader> sptr;
+
     GLuint modelviewUniform;
     GLuint modelviewNormalUniform;
     GLuint projectionUniform;
@@ -25,6 +27,5 @@ struct PhongShader
     GLuint program;
 
     void Setup();
-    void ApplyMaterial(const Material& mtl);
-
+    void ApplyMaterial(Material::sptr mtl);
 };
