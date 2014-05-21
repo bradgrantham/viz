@@ -56,15 +56,6 @@ bool gVerbose = true;
 //----------------------------------------------------------------------------
 // Actual GL functions
 
-static void CheckOpenGL(const char *filename, int line)
-{
-    int glerr;
-
-    if((glerr = glGetError()) != GL_NO_ERROR) {
-        printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
-    }
-}
-
 static bool CheckShaderCompile(GLuint shader, const std::string& shader_name)
 {
     int status;
@@ -113,38 +104,7 @@ static bool CheckProgramLink(GLuint program)
     return false;
 }
 
-struct DrawList
-{
-    struct PrimInfo {
-        GLenum type;
-        GLint start;
-        GLsizei count;
-        PrimInfo(GLenum t, GLint s, GLsizei c) :
-            type(t),
-            start(s),
-            count(c)
-        {}
-    };
-    GLuint vertexArray;
-    bool indexed;
-    std::vector<PrimInfo> prims;
-} gDrawList;
-
-
-struct Material {
-    float diffuse[4];
-    float ambient[4];
-    float specular[4];
-    float shininess;
-    Material(const float diffuse_[4], const float ambient_[4],
-        const float specular_[4], const float shininess_)
-    {
-        for(int i = 0; i < 4; i++) diffuse[i] = diffuse_[i];
-        for(int i = 0; i < 4; i++) ambient[i] = ambient_[i];
-        for(int i = 0; i < 4; i++) specular[i] = specular_[i];
-        shininess = shininess_;
-    }
-};
+DrawList gDrawList;
 
 struct PhongShader
 {
@@ -324,26 +284,7 @@ void DrawObject(float objectTime, bool drawWireframe)
     gPhongShader.ApplyMaterial(mtl);
     CheckOpenGL(__FILE__, __LINE__);
 
-    glBindVertexArray(gDrawList.vertexArray);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    if(drawWireframe) {
-        for(size_t i = 0; i < gDrawList.prims.size(); i++) {
-            const DrawList::PrimInfo& p = gDrawList.prims[i];
-            if(p.type == GL_TRIANGLES)
-                for(int j = 0; j < gDrawList.prims[i].count / 3; j++)
-                    glDrawArrays(GL_LINE_LOOP, p.start + j * 3, 3);
-        }
-    } else {
-	// Leave loop in here instead of elevating because will
-	// eventually move to MultiDraw, I think
-        for(size_t i = 0; i < gDrawList.prims.size(); i++) {
-            const DrawList::PrimInfo& p = gDrawList.prims[i];
-            glDrawArrays(p.type, p.start, p.count);
-        }
-    }
-
-    CheckOpenGL(__FILE__, __LINE__);
+    gDrawList.Draw(drawWireframe);
 }
 
 float gFOV = 45;

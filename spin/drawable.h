@@ -14,6 +14,20 @@
 // limitations under the License.
 // 
 
+#include <vector>
+
+#define GLFW_INCLUDE_GLCOREARB
+#include <GLFW/glfw3.h>
+
+static void CheckOpenGL(const char *filename, int line)
+{
+    int glerr;
+
+    if((glerr = glGetError()) != GL_NO_ERROR) {
+        printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
+    }
+}
+
 struct Vertex
 {
     float v[3];
@@ -22,3 +36,37 @@ struct Vertex
 
 extern struct Vertex gVertices[];
 extern int gTriangleCount;
+
+struct Material
+{
+    float diffuse[4];
+    float ambient[4];
+    float specular[4];
+    float shininess;
+    Material(const float diffuse_[4], const float ambient_[4],
+        const float specular_[4], const float shininess_)
+    {
+        for(int i = 0; i < 4; i++) diffuse[i] = diffuse_[i];
+        for(int i = 0; i < 4; i++) ambient[i] = ambient_[i];
+        for(int i = 0; i < 4; i++) specular[i] = specular_[i];
+        shininess = shininess_;
+    }
+};
+
+struct DrawList
+{
+    struct PrimInfo {
+        GLenum type;
+        GLint start;
+        GLsizei count;
+        PrimInfo(GLenum t, GLint s, GLsizei c) :
+            type(t),
+            start(s),
+            count(c)
+        {}
+    };
+    GLuint vertexArray;
+    bool indexed;
+    std::vector<PrimInfo> prims;
+    void Draw(bool drawWireframe);
+};
