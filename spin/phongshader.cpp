@@ -192,3 +192,12 @@ void PhongShader::Setup()
     projectionUniform = glGetUniformLocation(program, "projection_matrix");
 }
 
+void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
+{
+    CheckOpenGL(__FILE__, __LINE__);
+
+    phongshader->ApplyMaterial(material);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    drawList->Draw(drawWireframe);
+}

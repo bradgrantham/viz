@@ -51,38 +51,7 @@ static int gButtonPressed = -1;
 // XXX Allow these to be set by options
 bool gVerbose = true;
 
-//----------------------------------------------------------------------------
-// Actual GL functions
-
 PhongShader::sptr gShader;
-
-struct PhongShadedGeometry
-{
-    typedef boost::shared_ptr<PhongShadedGeometry> sptr;
-
-    DrawList::sptr drawList;
-    Material::sptr material;
-    PhongShader::sptr phongshader;
-
-    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p) :
-        drawList(dl),
-        material(mtl),
-        phongshader(p)
-    {}
-
-    void Draw(float objectTime, bool drawWireframe);
-};
-
-void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
-{
-    CheckOpenGL(__FILE__, __LINE__);
-
-    gShader->ApplyMaterial(material);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    drawList->Draw(drawWireframe);
-}
-
 PhongShadedGeometry::sptr gObject;
 
 void InitializeObject()
