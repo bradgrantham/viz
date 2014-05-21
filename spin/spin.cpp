@@ -115,9 +115,23 @@ static bool CheckProgramLink(GLuint program)
 GLuint gVertexArray;
 GLuint gVertexBuffer;
 
+struct Material {
+    float diffuse[4];
+    float ambient[4];
+    float specular[4];
+    float shininess;
+    Material(const float diffuse_[4], const float ambient_[4],
+        const float specular_[4], const float shininess_)
+    {
+        for(int i = 0; i < 4; i++) diffuse[i] = diffuse_[i];
+        for(int i = 0; i < 4; i++) ambient[i] = ambient_[i];
+        for(int i = 0; i < 4; i++) specular[i] = specular_[i];
+        shininess = shininess_;
+    }
+};
+
 struct PhongShader
 {
-
     GLuint modelviewUniform;
     GLuint modelviewNormalUniform;
     GLuint projectionUniform;
@@ -139,8 +153,17 @@ struct PhongShader
     GLuint program;
 
     void Setup();
+    void ApplyMaterial(const Material& mtl);
 
 } gPhongShader;
+
+void PhongShader::ApplyMaterial(const Material& mtl)
+{
+    glUniform4fv(materialAmbientUniform, 1, mtl.diffuse);
+    glUniform4fv(materialDiffuseUniform, 1, mtl.ambient);
+    glUniform4fv(materialSpecularUniform, 1, mtl.specular);
+    glUniform1f(materialShininessUniform, mtl.shininess);
+}
 
 const char *PhongShader::vertexShaderText = "\n\
     uniform mat4 modelview_matrix;\n\
@@ -277,11 +300,9 @@ void DrawObject(float objectTime, bool drawWireframe)
     static float objectDiffuse[4] = {.8, .7, .6, 1};
     static float objectSpecular[4] = {1, 1, 1, 1};
     static float objectShininess = 50;
+    static Material mtl(objectDiffuse, objectDiffuse, objectSpecular, objectShininess);
 
-    glUniform4fv(gPhongShader.materialAmbientUniform, 1, objectDiffuse);
-    glUniform4fv(gPhongShader.materialDiffuseUniform, 1, objectDiffuse);
-    glUniform4fv(gPhongShader.materialSpecularUniform, 1, objectSpecular);
-    glUniform1f(gPhongShader.materialShininessUniform, objectShininess);
+    gPhongShader.ApplyMaterial(mtl);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(gVertexArray);
