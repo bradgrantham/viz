@@ -104,8 +104,6 @@ static bool CheckProgramLink(GLuint program)
     return false;
 }
 
-DrawList gDrawList;
-
 struct PhongShader
 {
     GLuint modelviewUniform;
@@ -245,12 +243,25 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
     return program;
 }
 
+struct PhongShadedGeometry {
+    DrawList drawList;
+    Material material;
+    void Draw(float objectTime, bool drawWireframe);
+};
+
+PhongShadedGeometry gShape;
+
 void InitializeObject()
 {
-    glGenVertexArrays(1, &gDrawList.vertexArray);
-    glBindVertexArray(gDrawList.vertexArray);
-    gDrawList.indexed = false;
-    gDrawList.prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
+    static float objectDiffuse[4] = {.8, .7, .6, 1};
+    static float objectSpecular[4] = {1, 1, 1, 1};
+    static float objectShininess = 50;
+    gShape.material = Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess);
+
+    glGenVertexArrays(1, &gShape.drawList.vertexArray);
+    glBindVertexArray(gShape.drawList.vertexArray);
+    gShape.drawList.indexed = false;
+    gShape.drawList.prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
     CheckOpenGL(__FILE__, __LINE__);
 
     GLuint vertexBuffer;
@@ -272,19 +283,14 @@ void InitializeObject()
     glBindVertexArray(GL_NONE);
 }
 
-void DrawObject(float objectTime, bool drawWireframe)
+void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
 {
     CheckOpenGL(__FILE__, __LINE__);
 
-    static float objectDiffuse[4] = {.8, .7, .6, 1};
-    static float objectSpecular[4] = {1, 1, 1, 1};
-    static float objectShininess = 50;
-    static Material mtl(objectDiffuse, objectDiffuse, objectSpecular, objectShininess);
-
-    gPhongShader.ApplyMaterial(mtl);
+    gPhongShader.ApplyMaterial(material);
     CheckOpenGL(__FILE__, __LINE__);
 
-    gDrawList.Draw(drawWireframe);
+    drawList.Draw(drawWireframe);
 }
 
 float gFOV = 45;
@@ -326,7 +332,7 @@ void DrawScene()
     modelview_normal.invert();
     glUniformMatrix4fv(gPhongShader.modelviewUniform, 1, GL_FALSE, modelview.m_v);
     glUniformMatrix4fv(gPhongShader.modelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
-    DrawObject(0, gDrawWireframe);
+    gShape.Draw(0, gDrawWireframe);
 }
 
 void PhongShader::Setup()

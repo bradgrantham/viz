@@ -51,6 +51,13 @@ struct Material
         for(int i = 0; i < 4; i++) specular[i] = specular_[i];
         shininess = shininess_;
     }
+    Material()
+    {
+        diffuse[0] = .8; diffuse[1] = .8; diffuse[2] = .8; diffuse[3] = 1;
+        ambient[0] = .2; ambient[1] = .2; ambient[2] = .2; ambient[3] = 1;
+        specular[0] = .8; specular[1] = .8; specular[2] = .8; specular[3] = 1;
+        shininess = 0;
+    }
 };
 
 struct DrawList
