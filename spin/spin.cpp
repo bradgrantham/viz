@@ -115,26 +115,34 @@ static bool CheckProgramLink(GLuint program)
 GLuint gVertexArray;
 GLuint gVertexBuffer;
 
-GLuint gModelviewUniform;
-GLuint gModelviewNormalUniform;
-GLuint gProjectionUniform;
+struct PhongShader
+{
 
-GLuint gMaterialDiffuseUniform;
-GLuint gMaterialAmbientUniform;
-GLuint gMaterialSpecularUniform;
-GLuint gMaterialShininessUniform;
+    GLuint modelviewUniform;
+    GLuint modelviewNormalUniform;
+    GLuint projectionUniform;
 
-GLuint gLightPositionUniform;
-GLuint gLightColorUniform;
+    GLuint materialDiffuseUniform;
+    GLuint materialAmbientUniform;
+    GLuint materialSpecularUniform;
+    GLuint materialShininessUniform;
 
-const int kPositionAttrib = 0; 
-const int kNormalAttrib = 1; 
+    GLuint lightPositionUniform;
+    GLuint lightColorUniform;
 
-GLuint gProgram;
+    int positionAttrib;
+    int normalAttrib; 
 
-float gFOV = 45;
+    static const char *vertexShaderText;
+    static const char *fragmentShaderText;
 
-static const char *gVertexShaderText = "\n\
+    GLuint program;
+
+    void Setup();
+
+} gPhongShader;
+
+const char *PhongShader::vertexShaderText = "\n\
     uniform mat4 modelview_matrix;\n\
     uniform mat4 modelview_normal_matrix;\n\
     uniform mat4 projection_matrix;\n\
@@ -156,8 +164,7 @@ static const char *gVertexShaderText = "\n\
         ;\n\
     }\n";
 
-
-static const char *gFragmentShaderText = "\n\
+const char *PhongShader::fragmentShaderText = "\n\
     uniform vec4 material_diffuse;\n\
     uniform vec4 material_specular;\n\
     uniform vec4 material_ambient;\n\
@@ -200,7 +207,7 @@ static const char *gFragmentShaderText = "\n\
         color = diffuse * material_diffuse + ambient * material_ambient + specular * material_specular;\n\
     }\n";
 
-static GLuint GenerateProgram()
+static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::string& fragment_shader_text)
 {
     std::string spec_string;
 
@@ -210,8 +217,8 @@ static GLuint GenerateProgram()
     // they have in the base shaders.
     spec_string += "#line 0\n";
 
-    std::string vertex_shader_string = spec_string + gVertexShaderText;
-    std::string fragment_shader_string = spec_string + gFragmentShaderText;
+    std::string vertex_shader_string = spec_string + vertex_shader_text;
+    std::string fragment_shader_string = spec_string + fragment_shader_text;
 
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     const char *string = vertex_shader_string.c_str();
@@ -230,11 +237,6 @@ static GLuint GenerateProgram()
     GLuint program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
-
-    // XXX Really need to do this generically
-    glBindAttribLocation(program, kPositionAttrib, "position");
-    glBindAttribLocation(program, kNormalAttrib, "normal");
-    CheckOpenGL(__FILE__, __LINE__);
 
     glLinkProgram(program);
     CheckOpenGL(__FILE__, __LINE__);
@@ -258,11 +260,11 @@ void InitializeObject()
     size_t stride = sizeof(Vertex);
     size_t normalOffset = sizeof(float) * 3;
 
-    glVertexAttribPointer(kPositionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glEnableVertexAttribArray(kPositionAttrib);
+    glVertexAttribPointer(gPhongShader.positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(gPhongShader.positionAttrib);
 
-    glVertexAttribPointer(kNormalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
-    glEnableVertexAttribArray(kNormalAttrib);
+    glVertexAttribPointer(gPhongShader.normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(gPhongShader.normalAttrib);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(GL_NONE);
@@ -276,10 +278,10 @@ void DrawObject(float objectTime, bool drawWireframe)
     static float objectSpecular[4] = {1, 1, 1, 1};
     static float objectShininess = 50;
 
-    glUniform4fv(gMaterialAmbientUniform, 1, objectDiffuse);
-    glUniform4fv(gMaterialDiffuseUniform, 1, objectDiffuse);
-    glUniform4fv(gMaterialSpecularUniform, 1, objectSpecular);
-    glUniform1f(gMaterialShininessUniform, objectShininess);
+    glUniform4fv(gPhongShader.materialAmbientUniform, 1, objectDiffuse);
+    glUniform4fv(gPhongShader.materialDiffuseUniform, 1, objectDiffuse);
+    glUniform4fv(gPhongShader.materialSpecularUniform, 1, objectSpecular);
+    glUniform1f(gPhongShader.materialShininessUniform, objectShininess);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(gVertexArray);
@@ -294,6 +296,8 @@ void DrawObject(float objectTime, bool drawWireframe)
 
     CheckOpenGL(__FILE__, __LINE__);
 }
+
+float gFOV = 45;
 
 void DrawScene()
 {
@@ -314,13 +318,13 @@ void DrawScene()
     frustumLeft = -frustumRight;
 
     mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
-    glUniformMatrix4fv(gProjectionUniform, 1, GL_FALSE, projection.m_v);
+    glUniformMatrix4fv(gPhongShader.projectionUniform, 1, GL_FALSE, projection.m_v);
     CheckOpenGL(__FILE__, __LINE__);
 
     float lightPosition[4] = {0, 0, 1, 0};
     float lightColor[4] = {1, 1, 1, 1};
-    glUniform4fv(gLightPositionUniform, 1, lightPosition);
-    glUniform4fv(gLightColorUniform, 1, lightColor);
+    glUniform4fv(gPhongShader.lightPositionUniform, 1, lightPosition);
+    glUniform4fv(gPhongShader.lightColorUniform, 1, lightColor);
     CheckOpenGL(__FILE__, __LINE__);
 
     /* draw floor, draw shadow, etc */
@@ -330,11 +334,36 @@ void DrawScene()
     // XXX should not invert every time; parallel normal matrix math path?
     modelview_normal.transpose();
     modelview_normal.invert();
-    glUniformMatrix4fv(gModelviewUniform, 1, GL_FALSE, modelview.m_v);
-    glUniformMatrix4fv(gModelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
+    glUniformMatrix4fv(gPhongShader.modelviewUniform, 1, GL_FALSE, modelview.m_v);
+    glUniformMatrix4fv(gPhongShader.modelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
     DrawObject(0, gDrawWireframe);
 }
 
+void PhongShader::Setup()
+{
+    program = GenerateProgram(vertexShaderText, fragmentShaderText);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    positionAttrib = glGetAttribLocation(program, "position");
+    normalAttrib = glGetAttribLocation(program, "normal");
+    CheckOpenGL(__FILE__, __LINE__);
+
+    glUseProgram(program);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    materialDiffuseUniform = glGetUniformLocation(program, "material_diffuse");
+    materialSpecularUniform = glGetUniformLocation(program, "material_specular");
+    materialAmbientUniform = glGetUniformLocation(program, "material_ambient");
+    materialShininessUniform = glGetUniformLocation(program, "material_shininess");
+
+    lightPositionUniform = glGetUniformLocation(program, "light_position");
+    lightColorUniform = glGetUniformLocation(program, "light_color");
+
+    modelviewUniform = glGetUniformLocation(program, "modelview_matrix");
+    modelviewNormalUniform = glGetUniformLocation(program, "modelview_normal_matrix");
+    projectionUniform = glGetUniformLocation(program, "projection_matrix");
+
+}
 
 void InitializeGL()
 {
@@ -344,23 +373,7 @@ void InitializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    gProgram = GenerateProgram();
-    CheckOpenGL(__FILE__, __LINE__);
-
-    glUseProgram(gProgram);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    gMaterialDiffuseUniform = glGetUniformLocation(gProgram, "material_diffuse");
-    gMaterialSpecularUniform = glGetUniformLocation(gProgram, "material_specular");
-    gMaterialAmbientUniform = glGetUniformLocation(gProgram, "material_ambient");
-    gMaterialShininessUniform = glGetUniformLocation(gProgram, "material_shininess");
-
-    gLightPositionUniform = glGetUniformLocation(gProgram, "light_position");
-    gLightColorUniform = glGetUniformLocation(gProgram, "light_color");
-
-    gModelviewUniform = glGetUniformLocation(gProgram, "modelview_matrix");
-    gModelviewNormalUniform = glGetUniformLocation(gProgram, "modelview_normal_matrix");
-    gProjectionUniform = glGetUniformLocation(gProgram, "projection_matrix");
+    gPhongShader.Setup();
 
     CheckOpenGL(__FILE__, __LINE__);
 }
