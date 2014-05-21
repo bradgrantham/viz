@@ -148,6 +148,7 @@ void InitializeGL()
 void TeardownGL()
 {
     gShader = PhongShader::sptr();
+    gObject = PhongShadedGeometry::sptr();
 }
 
 static void InitializeScene()
