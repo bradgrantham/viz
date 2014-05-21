@@ -19,6 +19,7 @@
 #include <string>
 #include <limits>
 #include <algorithm>
+#include <vector>
 #include <unistd.h>
 
 #define GLFW_INCLUDE_GLCOREARB
@@ -112,8 +113,23 @@ static bool CheckProgramLink(GLuint program)
     return false;
 }
 
-GLuint gVertexArray;
-GLuint gVertexBuffer;
+struct DrawList
+{
+    struct PrimInfo {
+        GLenum type;
+        GLint start;
+        GLsizei count;
+        PrimInfo(GLenum t, GLint s, GLsizei c) :
+            type(t),
+            start(s),
+            count(c)
+        {}
+    };
+    GLuint vertexArray;
+    bool indexed;
+    std::vector<PrimInfo> prims;
+} gDrawList;
+
 
 struct Material {
     float diffuse[4];
@@ -271,12 +287,15 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
 
 void InitializeObject()
 {
-    glGenVertexArrays(1, &gVertexArray);
-    glBindVertexArray(gVertexArray);
+    glGenVertexArrays(1, &gDrawList.vertexArray);
+    glBindVertexArray(gDrawList.vertexArray);
+    gDrawList.indexed = false;
+    gDrawList.prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
     CheckOpenGL(__FILE__, __LINE__);
 
-    glGenBuffers(1, &gVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, gVertexBuffer);
+    GLuint vertexBuffer;
+    glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * gTriangleCount * 3, gVertices, GL_STATIC_DRAW);
     CheckOpenGL(__FILE__, __LINE__);
 
@@ -305,14 +324,23 @@ void DrawObject(float objectTime, bool drawWireframe)
     gPhongShader.ApplyMaterial(mtl);
     CheckOpenGL(__FILE__, __LINE__);
 
-    glBindVertexArray(gVertexArray);
+    glBindVertexArray(gDrawList.vertexArray);
     CheckOpenGL(__FILE__, __LINE__);
 
     if(drawWireframe) {
-        for(int i = 0; i < gTriangleCount; i++)
-            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+        for(size_t i = 0; i < gDrawList.prims.size(); i++) {
+            const DrawList::PrimInfo& p = gDrawList.prims[i];
+            if(p.type == GL_TRIANGLES)
+                for(int j = 0; j < gDrawList.prims[i].count / 3; j++)
+                    glDrawArrays(GL_LINE_LOOP, p.start + j * 3, 3);
+        }
     } else {
-        glDrawArrays(GL_TRIANGLES, 0, gTriangleCount * 3);
+	// Leave loop in here instead of elevating because will
+	// eventually move to MultiDraw, I think
+        for(size_t i = 0; i < gDrawList.prims.size(); i++) {
+            const DrawList::PrimInfo& p = gDrawList.prims[i];
+            glDrawArrays(p.type, p.start, p.count);
+        }
     }
 
     CheckOpenGL(__FILE__, __LINE__);
