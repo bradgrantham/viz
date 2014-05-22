@@ -1,4 +1,8 @@
+#ifndef _PHONGSHADER_H_
+#define _PHONGSHADER_H_
+
 #include "drawable.h"
+#include "geometry.h"
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
@@ -38,12 +42,16 @@ struct PhongShadedGeometry
     Material::sptr material;
     PhongShader::sptr phongshader;
 
-    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p) :
+    box bounds;
+
+    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p, const box& b) :
         drawList(dl),
         material(mtl),
-        phongshader(p)
+        phongshader(p),
+        bounds(b)
     {}
 
     void Draw(float objectTime, bool drawWireframe);
 };
 
+#endif /* _PHONGSHADER_H_ */

@@ -1,23 +1,9 @@
-//
-// Copyright 2013-2014, Bradley A. Grantham
-// 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//      http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
+#include "builtin_loader.h"
 
+namespace BuiltinLoader
+{
 
-#include "drawable.h"
-
-struct Vertex gVertices[] = {
+struct Vertex g64GonVertices[] = {
     {{-31.531658, -5.454563, 98.880981}, {-0.042442, -0.098477, 0.994234}},
     {{19.249924, 11.012655, 102.012672}, {-0.042442, -0.098477, 0.994234}},
     {{-15.320923, 16.778076, 101.325745}, {-0.042442, -0.098477, 0.994234}},
@@ -752,4 +738,57 @@ struct Vertex gVertices[] = {
     {{-21.506315, 1.326975, -101.685585}, {-0.051705, 0.239174, -0.969599}},
 };
 
-int gTriangleCount = 244;
+int g64GonTriangleCount = 244;
+
+PhongShadedGeometry::sptr Initialize64Gon(PhongShader::sptr shader)
+{
+    static float objectDiffuse[4] = {.8, .7, .6, 1};
+    static float objectSpecular[4] = {1, 1, 1, 1};
+    static float objectShininess = 50;
+    Material::sptr mtl(new Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess));
+
+    DrawList::sptr drawlist(new DrawList);
+    glGenVertexArrays(1, &drawlist->vertexArray);
+    glBindVertexArray(drawlist->vertexArray);
+    drawlist->indexed = false;
+    drawlist->prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, g64GonTriangleCount * 3));
+    CheckOpenGL(__FILE__, __LINE__);
+
+    GLuint vertexBuffer;
+    glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * g64GonTriangleCount * 3, g64GonVertices, GL_STATIC_DRAW);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    size_t stride = sizeof(Vertex);
+    size_t normalOffset = sizeof(float) * 3;
+
+    glVertexAttribPointer(shader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(shader->positionAttrib);
+
+    glVertexAttribPointer(shader->normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(shader->normalAttrib);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    glBindVertexArray(GL_NONE);
+
+    box bounds;
+    for(int i = 0; i < g64GonTriangleCount * 3; i++)
+        bounds.extend(g64GonVertices[i].v);
+
+    return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, shader, bounds));
+}
+
+bool Load(const std::string& filename, PhongShader::sptr shader, PhongShadedGeometry::sptr& scene)
+{
+    int index = filename.find_last_of(".");
+    std::string model = filename.substr(0, index);
+    if(model == "64gon") {
+        scene = Initialize64Gon(shader);
+        return true;
+    } else
+        return false;
+}
+
+};
+

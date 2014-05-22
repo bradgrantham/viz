@@ -31,6 +31,7 @@
 
 #include "drawable.h"
 #include "phongshader.h"
+#include "builtin_loader.h"
 
 //------------------------------------------------------------------------
 
@@ -53,41 +54,6 @@ bool gVerbose = true;
 
 PhongShader::sptr gShader;
 PhongShadedGeometry::sptr gObject;
-
-void InitializeObject()
-{
-    static float objectDiffuse[4] = {.8, .7, .6, 1};
-    static float objectSpecular[4] = {1, 1, 1, 1};
-    static float objectShininess = 50;
-    Material::sptr mtl(new Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess));
-
-    DrawList::sptr drawlist(new DrawList);
-    glGenVertexArrays(1, &drawlist->vertexArray);
-    glBindVertexArray(drawlist->vertexArray);
-    drawlist->indexed = false;
-    drawlist->prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, gTriangleCount * 3));
-    CheckOpenGL(__FILE__, __LINE__);
-
-    GLuint vertexBuffer;
-    glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * gTriangleCount * 3, gVertices, GL_STATIC_DRAW);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    size_t stride = sizeof(Vertex);
-    size_t normalOffset = sizeof(float) * 3;
-
-    glVertexAttribPointer(gShader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glEnableVertexAttribArray(gShader->positionAttrib);
-
-    glVertexAttribPointer(gShader->normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
-    glEnableVertexAttribArray(gShader->normalAttrib);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    glBindVertexArray(GL_NONE);
-
-    gObject = PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, gShader));
-}
 
 float gFOV = 45;
 
@@ -151,20 +117,14 @@ void TeardownGL()
     gObject = PhongShadedGeometry::sptr();
 }
 
-static void InitializeScene()
+static void InitializeScene(PhongShadedGeometry::sptr scene)
 {
-    box bounds;
-    for(int i = 0; i < gTriangleCount * 3; i++)
-        bounds.extend(gVertices[i].v);
-
-    gSceneManip = new manipulator(bounds, gFOV / 180.0 * 3.14159);
+    gSceneManip = new manipulator(scene->bounds, gFOV / 180.0 * 3.14159);
 
     gObjectManip = new manipulator();
     gObjectManip->calculate_matrix();
 
     gCurrentManip = gSceneManip;
-
-    InitializeObject();
 }
 
 static void ErrorCallback(int error, const char* description)
@@ -277,8 +237,28 @@ static void DrawFrame(GLFWwindow *window)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-int main()
+bool LoadScene(const std::string& filename, PhongShadedGeometry::sptr& scene)
 {
+    int index = filename.find_last_of(".");
+    std::string extension = filename.substr(index + 1);
+
+    if(extension == "builtin") {
+        return BuiltinLoader::Load(filename, gShader, scene);
+    } else {
+        return false;
+    }
+}
+
+int main(int argc, char **argv)
+{
+    const char *progname = argv[0];
+    if(argc < 2) {
+        fprintf(stderr, "usage: %s filename # e.g. \"%s 64gon.builtin\"\n", progname, progname);
+        exit(EXIT_FAILURE);
+    }
+
+    const char *scene_filename = argv[1];
+
     GLFWwindow* window;
 
     glfwSetErrorCallback(ErrorCallback);
@@ -302,7 +282,11 @@ int main()
     glfwMakeContextCurrent(window);
 
     InitializeGL();
-    InitializeScene();
+    if(!LoadScene(scene_filename, gObject)) {
+        fprintf(stderr, "couldn't load scene from %s\n", scene_filename);
+        exit(EXIT_FAILURE);
+    }
+    InitializeScene(gObject);
 
     if(gVerbose) {
         printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
