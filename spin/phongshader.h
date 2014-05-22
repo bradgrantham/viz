@@ -40,6 +40,7 @@ struct PhongShader
 
     int positionAttrib;
     int normalAttrib; 
+    int colorAttrib; 
 
     static const char *vertexShaderText;
     static const char *fragmentShaderText;

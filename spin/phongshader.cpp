@@ -125,9 +125,11 @@ const char *PhongShader::vertexShaderText = "\n\
     uniform mat4 projection_matrix;\n\
     in vec3 position;\n\
     in vec3 normal;\n\
+    in vec4 color;\n\
     \n\
     out vec3 vertex_normal;\n\
     out vec4 vertex_position;\n\
+    out vec4 vertex_color;\n\
     out vec3 eye_direction;\n\
     \n\
     void main()\n\
@@ -135,6 +137,7 @@ const char *PhongShader::vertexShaderText = "\n\
     \n\
         vertex_normal = (modelview_normal_matrix * vec4(normal, 0.0)).xyz;\n\
         vertex_position = modelview_matrix * vec4(position, 1.0);\n\
+        vertex_color = color;\n\
         eye_direction = -vertex_position.xyz;\n\
     \n\
         gl_Position = projection_matrix * modelview_matrix * vec4(position, 1.0);\n\
@@ -152,6 +155,7 @@ const char *PhongShader::fragmentShaderText = "\n\
     \n\
     in vec3 vertex_normal;\n\
     in vec4 vertex_position;\n\
+    in vec4 vertex_color;\n\
     in vec3 eye_direction;\n\
     out vec4 color;\n\
     \n\
@@ -181,7 +185,7 @@ const char *PhongShader::fragmentShaderText = "\n\
         vec4 ambient = light_color * .2;\n\
         vec4 specular = pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
-        color = diffuse * material_diffuse + ambient * material_ambient + specular * material_specular;\n\
+        color = diffuse * material_diffuse * vertex_color + ambient * material_ambient * vertex_color + specular * material_specular;\n\
     }\n";
 
 void PhongShader::Setup()
@@ -191,6 +195,7 @@ void PhongShader::Setup()
 
     positionAttrib = glGetAttribLocation(program, "position");
     normalAttrib = glGetAttribLocation(program, "normal");
+    colorAttrib = glGetAttribLocation(program, "color");
     CheckOpenGL(__FILE__, __LINE__);
 
     glUseProgram(program);
