@@ -214,11 +214,23 @@ void PhongShader::Setup()
     envu.projection = glGetUniformLocation(program, "projection_matrix");
 }
 
+PhongShader::sptr PhongShader::gShader;
+
+PhongShader::sptr PhongShader::GetForCurrentContext()
+{
+    // XXX only handle one context that doesn't change for now
+    if(!gShader) {
+        gShader = PhongShader::sptr(new PhongShader());
+        gShader->Setup();
+    }
+    return gShader;
+}
+
 void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
 {
     CheckOpenGL(__FILE__, __LINE__);
 
-    phongshader->ApplyMaterial(material);
+    PhongShader::GetForCurrentContext()->ApplyMaterial(material);
     CheckOpenGL(__FILE__, __LINE__);
 
     drawList->Draw(drawWireframe);

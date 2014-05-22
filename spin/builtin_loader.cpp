@@ -3805,8 +3805,10 @@ struct Vertex g64GonVertices[] = {
 
 int g64GonTriangleCount = 244;
 
-PhongShadedGeometry::sptr InitializePolytope(PhongShader::sptr shader, Vertex *vertices, int triangleCount)
+PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount)
 {
+    PhongShader::sptr shader = PhongShader::GetForCurrentContext();
+
     static float objectDiffuse[4] = {.8, .7, .6, 1};
     static float objectSpecular[4] = {1, 1, 1, 1};
     static float objectShininess = 50;
@@ -3849,18 +3851,18 @@ PhongShadedGeometry::sptr InitializePolytope(PhongShader::sptr shader, Vertex *v
     for(int i = 0; i < triangleCount * 3; i++)
         bounds.extend(vertices[i].v);
 
-    return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, shader, bounds));
+    return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
 }
 
-bool Load(const std::string& filename, PhongShader::sptr shader, PhongShadedGeometry::sptr& scene)
+bool Load(const std::string& filename, PhongShadedGeometry::sptr& scene)
 {
     int index = filename.find_last_of(".");
     std::string model = filename.substr(0, index);
     if(model == "64gon") {
-        scene = InitializePolytope(shader, g64GonVertices, g64GonTriangleCount);
+        scene = InitializePolytope(g64GonVertices, g64GonTriangleCount);
         return true;
     } else if(model == "256gon") {
-        scene = InitializePolytope(shader, g256GonVertices, g256GonTriangleCount);
+        scene = InitializePolytope(g256GonVertices, g256GonTriangleCount);
         return true;
     } else {
         return false;

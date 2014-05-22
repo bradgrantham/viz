@@ -43,6 +43,9 @@ struct PhongShader : public Shader
     void ApplyMaterial(Material::sptr mtl);
     virtual void Setup();
     virtual ~PhongShader() {}
+
+    static PhongShader::sptr GetForCurrentContext();
+    static PhongShader::sptr gShader;
 };
 
 struct PhongShadedGeometry : public Drawable
@@ -50,15 +53,13 @@ struct PhongShadedGeometry : public Drawable
     typedef boost::shared_ptr<PhongShadedGeometry> sptr;
 
     Material::sptr material;
-    PhongShader::sptr phongshader;
 
-    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p, const box& b) :
+    PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, const box& b) :
         Drawable(b, dl),
-        material(mtl),
-        phongshader(p)
+        material(mtl)
     {}
     virtual void Draw(float objectTime, bool drawWireframe);
-    virtual Shader::sptr GetShader() { return phongshader; }
+    virtual Shader::sptr GetShader() { return PhongShader::GetForCurrentContext(); }
     virtual ~PhongShadedGeometry() {}
 };
 

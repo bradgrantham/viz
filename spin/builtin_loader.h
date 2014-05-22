@@ -19,7 +19,7 @@
 namespace BuiltinLoader
 {
 
-bool Load(const std::string& filename, PhongShader::sptr shader, PhongShadedGeometry::sptr& scene);
+bool Load(const std::string& filename, PhongShadedGeometry::sptr& scene);
 
 };
 

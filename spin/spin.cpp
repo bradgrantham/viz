@@ -30,7 +30,6 @@
 #include "manipulator.h"
 
 #include "drawable.h"
-#include "phongshader.h"
 #include "builtin_loader.h"
 
 //------------------------------------------------------------------------
@@ -52,7 +51,6 @@ static int gButtonPressed = -1;
 // XXX Allow these to be set by options
 bool gVerbose = true;
 
-PhongShader::sptr gShader;
 PhongShadedGeometry::sptr gObject;
 
 float gFOV = 45;
@@ -108,15 +106,11 @@ void InitializeGL()
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 
-    gShader = PhongShader::sptr(new PhongShader);
-    gShader->Setup();
-
     CheckOpenGL(__FILE__, __LINE__);
 }
 
 void TeardownGL()
 {
-    gShader = PhongShader::sptr();
     gObject = PhongShadedGeometry::sptr();
 }
 
@@ -246,7 +240,7 @@ bool LoadScene(const std::string& filename, PhongShadedGeometry::sptr& scene)
     std::string extension = filename.substr(index + 1);
 
     if(extension == "builtin") {
-        return BuiltinLoader::Load(filename, gShader, scene);
+        return BuiltinLoader::Load(filename, scene);
     } else {
         return false;
     }
