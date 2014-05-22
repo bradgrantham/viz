@@ -34,15 +34,6 @@ static void CheckOpenGL(const char *filename, int line)
     }
 }
 
-struct Vertex
-{
-    float v[3];
-    float n[3];
-};
-
-extern struct Vertex gVertices[];
-extern int gTriangleCount;
-
 struct Material
 {
     typedef boost::shared_ptr<Material> sptr;
