@@ -116,6 +116,7 @@ void PhongShader::ApplyMaterial(Material::sptr mtl)
     glUniform4fv(materialDiffuseUniform, 1, mtl->ambient);
     glUniform4fv(materialSpecularUniform, 1, mtl->specular);
     glUniform1f(materialShininessUniform, mtl->shininess);
+    glUseProgram(program); // can switch to tex here
 }
 
 const char *PhongShader::vertexShaderText = "\n\
