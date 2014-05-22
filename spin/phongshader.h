@@ -22,21 +22,30 @@
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
+struct EnvironmentUniforms
+{
+    GLuint modelview;
+    GLuint modelviewNormal;
+    GLuint projection;
+
+    GLuint lightPosition;
+    GLuint lightColor;
+};
+
+struct MaterialUniforms
+{
+    GLuint diffuse;
+    GLuint ambient;
+    GLuint specular;
+    GLuint shininess;
+};
+
 struct PhongShader
 {
     typedef boost::shared_ptr<PhongShader> sptr;
 
-    GLuint modelviewUniform;
-    GLuint modelviewNormalUniform;
-    GLuint projectionUniform;
-
-    GLuint materialDiffuseUniform;
-    GLuint materialAmbientUniform;
-    GLuint materialSpecularUniform;
-    GLuint materialShininessUniform;
-
-    GLuint lightPositionUniform;
-    GLuint lightColorUniform;
+    EnvironmentUniforms envu;
+    MaterialUniforms mtlu;
 
     int positionAttrib;
     int normalAttrib; 

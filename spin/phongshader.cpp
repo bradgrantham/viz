@@ -112,10 +112,10 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
 
 void PhongShader::ApplyMaterial(Material::sptr mtl)
 {
-    glUniform4fv(materialAmbientUniform, 1, mtl->diffuse);
-    glUniform4fv(materialDiffuseUniform, 1, mtl->ambient);
-    glUniform4fv(materialSpecularUniform, 1, mtl->specular);
-    glUniform1f(materialShininessUniform, mtl->shininess);
+    glUniform4fv(mtlu.ambient, 1, mtl->diffuse);
+    glUniform4fv(mtlu.diffuse, 1, mtl->ambient);
+    glUniform4fv(mtlu.specular, 1, mtl->specular);
+    glUniform1f(mtlu.shininess, mtl->shininess);
     glUseProgram(program); // can switch to tex here
 }
 
@@ -201,17 +201,17 @@ void PhongShader::Setup()
     glUseProgram(program);
     CheckOpenGL(__FILE__, __LINE__);
 
-    materialDiffuseUniform = glGetUniformLocation(program, "material_diffuse");
-    materialSpecularUniform = glGetUniformLocation(program, "material_specular");
-    materialAmbientUniform = glGetUniformLocation(program, "material_ambient");
-    materialShininessUniform = glGetUniformLocation(program, "material_shininess");
+    mtlu.diffuse = glGetUniformLocation(program, "material_diffuse");
+    mtlu.specular = glGetUniformLocation(program, "material_specular");
+    mtlu.ambient = glGetUniformLocation(program, "material_ambient");
+    mtlu.shininess = glGetUniformLocation(program, "material_shininess");
 
-    lightPositionUniform = glGetUniformLocation(program, "light_position");
-    lightColorUniform = glGetUniformLocation(program, "light_color");
+    envu.lightPosition = glGetUniformLocation(program, "light_position");
+    envu.lightColor = glGetUniformLocation(program, "light_color");
 
-    modelviewUniform = glGetUniformLocation(program, "modelview_matrix");
-    modelviewNormalUniform = glGetUniformLocation(program, "modelview_normal_matrix");
-    projectionUniform = glGetUniformLocation(program, "projection_matrix");
+    envu.modelview = glGetUniformLocation(program, "modelview_matrix");
+    envu.modelviewNormal = glGetUniformLocation(program, "modelview_normal_matrix");
+    envu.projection = glGetUniformLocation(program, "projection_matrix");
 }
 
 void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)

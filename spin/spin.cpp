@@ -76,13 +76,13 @@ void DrawScene()
     frustumLeft = -frustumRight;
 
     mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
-    glUniformMatrix4fv(gShader->projectionUniform, 1, GL_FALSE, projection.m_v);
+    glUniformMatrix4fv(gShader->envu.projection, 1, GL_FALSE, projection.m_v);
     CheckOpenGL(__FILE__, __LINE__);
 
     float lightPosition[4] = {0, 0, 1, 0};
     float lightColor[4] = {1, 1, 1, 1};
-    glUniform4fv(gShader->lightPositionUniform, 1, lightPosition);
-    glUniform4fv(gShader->lightColorUniform, 1, lightColor);
+    glUniform4fv(gShader->envu.lightPosition, 1, lightPosition);
+    glUniform4fv(gShader->envu.lightColor, 1, lightColor);
     CheckOpenGL(__FILE__, __LINE__);
 
     /* draw floor, draw shadow, etc */
@@ -92,8 +92,8 @@ void DrawScene()
     // XXX should not invert every time; parallel normal matrix math path?
     modelview_normal.transpose();
     modelview_normal.invert();
-    glUniformMatrix4fv(gShader->modelviewUniform, 1, GL_FALSE, modelview.m_v);
-    glUniformMatrix4fv(gShader->modelviewNormalUniform, 1, GL_FALSE, modelview_normal.m_v);
+    glUniformMatrix4fv(gShader->envu.modelview, 1, GL_FALSE, modelview.m_v);
+    glUniformMatrix4fv(gShader->envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
     gObject->Draw(0, gDrawWireframe);
 }
 
