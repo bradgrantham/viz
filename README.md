@@ -26,7 +26,6 @@ Subtrees:
   * Encapsulated program and geometry objects
   * Simple per-pixel lighting, target is more complex shading including texturing
   * Meant to be standalone viewer for models
-
-Some example "spin" command lines
-* spin 256gon.builtin
-* spin 64gon.builtin
+  * Some example "spin" command lines
+    * % spin 256gon.builtin
+    * % spin 64gon.builtin

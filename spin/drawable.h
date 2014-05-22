@@ -100,6 +100,7 @@ struct Shader
 
 struct Drawable
 {
+    typedef boost::shared_ptr<Drawable> sptr;
     box bounds;
     DrawList::sptr drawList;
     Drawable(const box& b, DrawList::sptr dl) :

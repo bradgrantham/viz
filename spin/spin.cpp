@@ -51,7 +51,7 @@ static int gButtonPressed = -1;
 // XXX Allow these to be set by options
 bool gVerbose = true;
 
-PhongShadedGeometry::sptr gObject;
+Drawable::sptr gObject;
 
 float gFOV = 45;
 
@@ -111,10 +111,10 @@ void InitializeGL()
 
 void TeardownGL()
 {
-    gObject = PhongShadedGeometry::sptr();
+    gObject = Drawable::sptr();
 }
 
-static void InitializeScene(PhongShadedGeometry::sptr scene)
+static void InitializeScene(Drawable::sptr scene)
 {
     gSceneManip = new manipulator(scene->bounds, gFOV / 180.0 * 3.14159);
 
@@ -234,7 +234,7 @@ static void DrawFrame(GLFWwindow *window)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-bool LoadScene(const std::string& filename, PhongShadedGeometry::sptr& scene)
+bool LoadScene(const std::string& filename, Drawable::sptr& scene)
 {
     int index = filename.find_last_of(".");
     std::string extension = filename.substr(index + 1);

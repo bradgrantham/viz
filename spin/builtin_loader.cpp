@@ -15,6 +15,7 @@
 // 
 
 #include "builtin_loader.h"
+#include "phongshader.h"
 
 namespace BuiltinLoader
 {
@@ -3854,7 +3855,7 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
 }
 
-bool Load(const std::string& filename, PhongShadedGeometry::sptr& scene)
+bool Load(const std::string& filename, Drawable::sptr& scene)
 {
     int index = filename.find_last_of(".");
     std::string model = filename.substr(0, index);

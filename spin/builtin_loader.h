@@ -14,12 +14,12 @@
 // limitations under the License.
 // 
 
-#include "phongshader.h"
+#include "drawable.h"
 
 namespace BuiltinLoader
 {
 
-bool Load(const std::string& filename, PhongShadedGeometry::sptr& scene);
+bool Load(const std::string& filename, Drawable::sptr& scene);
 
 };
 
