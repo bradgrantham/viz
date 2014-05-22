@@ -14,5 +14,20 @@
 # limitations under the License.
 # 
 
-spin: spin.cpp vectormath.cpp vectormath.h geometry.h manipulator.h manipulator.cpp drawable.h drawable.cpp phongshader.h phongshader.cpp builtin_loader.cpp builtin_loader.h
-	g++ -Wall spin.cpp drawable.cpp vectormath.cpp manipulator.cpp phongshader.cpp builtin_loader.cpp -o spin -L/opt/local/lib -I/opt/local/include/ -lglfw -framework OpenGL -framework Cocoa -framework IOkit
+default: spin
+
+CXXFLAGS=-Wall -I/opt/local/include
+LDFLAGS=-L/opt/local/lib -lglfw -framework OpenGL -framework Cocoa -framework IOkit
+
+spin.o: builtin_loader.h drawable.h geometry.h manipulator.h phongshader.h vectormath.h
+vectormath.o: vectormath.h
+manipulator.o: geometry.h manipulator.h vectormath.h
+drawable.o: drawable.h
+phongshader.o: drawable.h geometry.h phongshader.h vectormath.h
+builtin_loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h
+
+CXXSOURCES      = spin.cpp vectormath.cpp manipulator.cpp drawable.cpp phongshader.cpp builtin_loader.cpp
+OBJECTS         = $(CXXSOURCES:.cpp=.o)
+
+spin: $(OBJECTS)
+	g++ $^ -o $@ -L/opt/local/lib $(LDFLAGS)
