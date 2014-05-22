@@ -25,6 +25,8 @@
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
+#include "geometry.h"
+
 static void CheckOpenGL(const char *filename, int line)
 {
     int glerr;
@@ -75,6 +77,39 @@ struct DrawList
     bool indexed;
     std::vector<PrimInfo> prims;
     void Draw(bool drawWireframe);
+};
+
+struct EnvironmentUniforms
+{
+    GLuint modelview;
+    GLuint modelviewNormal;
+    GLuint projection;
+
+    GLuint lightPosition;
+    GLuint lightColor;
+};
+
+struct Shader
+{
+    typedef boost::shared_ptr<Shader> sptr;
+    EnvironmentUniforms envu;
+    GLuint program;
+    virtual void Setup() = 0;
+    virtual ~Shader() {}
+};
+
+struct Drawable
+{
+    box bounds;
+    DrawList::sptr drawList;
+    Drawable(const box& b, DrawList::sptr dl) :
+        bounds(b),
+        drawList(dl)
+    {}
+
+    virtual void Draw(float objectTime, bool drawWireframe) = 0;
+    virtual Shader::sptr GetShader() = 0;
+    virtual ~Drawable() {}
 };
 
 #endif /* _DRAWABLE_H_ */

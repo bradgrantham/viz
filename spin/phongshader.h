@@ -18,19 +18,6 @@
 #define _PHONGSHADER_H_
 
 #include "drawable.h"
-#include "geometry.h"
-#define GLFW_INCLUDE_GLCOREARB
-#include <GLFW/glfw3.h>
-
-struct EnvironmentUniforms
-{
-    GLuint modelview;
-    GLuint modelviewNormal;
-    GLuint projection;
-
-    GLuint lightPosition;
-    GLuint lightColor;
-};
 
 struct MaterialUniforms
 {
@@ -40,11 +27,10 @@ struct MaterialUniforms
     GLuint shininess;
 };
 
-struct PhongShader
+struct PhongShader : public Shader
 {
     typedef boost::shared_ptr<PhongShader> sptr;
 
-    EnvironmentUniforms envu;
     MaterialUniforms mtlu;
 
     int positionAttrib;
@@ -54,30 +40,26 @@ struct PhongShader
     static const char *vertexShaderText;
     static const char *fragmentShaderText;
 
-    GLuint program;
-
-    void Setup();
     void ApplyMaterial(Material::sptr mtl);
+    virtual void Setup();
+    virtual ~PhongShader() {}
 };
 
-struct PhongShadedGeometry
+struct PhongShadedGeometry : public Drawable
 {
     typedef boost::shared_ptr<PhongShadedGeometry> sptr;
 
-    DrawList::sptr drawList;
     Material::sptr material;
     PhongShader::sptr phongshader;
 
-    box bounds;
-
     PhongShadedGeometry(DrawList::sptr dl, Material::sptr mtl, PhongShader::sptr p, const box& b) :
-        drawList(dl),
+        Drawable(b, dl),
         material(mtl),
-        phongshader(p),
-        bounds(b)
+        phongshader(p)
     {}
-
-    void Draw(float objectTime, bool drawWireframe);
+    virtual void Draw(float objectTime, bool drawWireframe);
+    virtual Shader::sptr GetShader() { return phongshader; }
+    virtual ~PhongShadedGeometry() {}
 };
 
 #endif /* _PHONGSHADER_H_ */
