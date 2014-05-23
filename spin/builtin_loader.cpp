@@ -3937,6 +3937,10 @@ bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
     } else if(model == "256gon") {
         objects.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
         return true;
+    } else if(model == "both") {
+        objects.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
+        objects.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
+        return true;
     } else {
         return false;
     }
