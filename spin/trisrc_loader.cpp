@@ -243,7 +243,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
 
         Material::sptr mtl(new Material);
         static float default_ambient[4] = {.1, .1, .1, 1};
-        static float default_diffuse[4] = {.8, .8, .8, 1};
+        static float default_diffuse[4] = {1, 1, 1, 1};
 
         mtl->shininess = sh->shininess;
         for(int i = 0; i < 4; i++) mtl->specular[i] = sh->specular[i];
