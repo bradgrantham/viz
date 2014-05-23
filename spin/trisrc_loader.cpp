@@ -210,7 +210,7 @@ struct indexed_shape
 {
     std::string name;
 
-    float specular[4];
+    vec4f specular;
     float shininess;
 
     std::string texture_name;
@@ -220,13 +220,12 @@ struct indexed_shape
 
     std::map<Vertex, unsigned int, VertexComparator> vertex_map;      // only used during load
 
-    indexed_shape(const std::string& name_, const std::string& texture_name_, const float specular_[4], float shininess_) :
+    indexed_shape(const std::string& name_, const std::string& texture_name_, const vec4f& specular_, float shininess_) :
         name(name_),
+        specular(specular_),
         shininess(shininess_),
         texture_name(texture_name_)
-    {
-        for(int i = 0; i < 4; i++) specular[i] = specular_[i];
-    }
+    {}
 };
 
 typedef std::map<std::string, indexed_shape*> indexed_shape_dict;
@@ -236,7 +235,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
     indexed_shape_dict shapes;
     char texture_name[512];
     char tag_name[512];
-    float specular_color[4];
+    vec4f specular_color;
     float shininess;
 
     size_t total_tris = 0;
@@ -250,8 +249,8 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
 	    return false;
 	}
 
-	if(fscanf(fp,"%g %g %g %g %g ", &specular_color[0], &specular_color[1],
-	    &specular_color[2], &specular_color[3], &shininess) != 5) {
+	if(fscanf(fp,"%g %g %g %g %g ", &specular_color.m_v[0], &specular_color.m_v[1],
+	    &specular_color.m_v[2], &specular_color.m_v[3], &shininess) != 5) {
 	    fprintf(stderr, "couldn't read specular properties\n");
 	    return false;
 	}
@@ -294,10 +293,8 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
             else
                 absoluteTextureName = _dirname + "/" + std::string(texture_name);
 
-	    sh = new indexed_shape(tag_name,
-                absoluteTextureName,
-	        specular_color,
-		shininess);
+	    sh = new indexed_shape(tag_name, absoluteTextureName,
+	        specular_color, shininess);
 	    shapes[shape_name] = sh;
 
 	} else {
@@ -326,8 +323,8 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
     for(auto itr = shapes.begin(); itr != shapes.end(); itr++) {
         indexed_shape *sh = itr->second;
 
-        static float default_ambient[4] = {.1, .1, .1, 1};
-        static float default_diffuse[4] = {1, 1, 1, 1};
+        static vec4f default_ambient(.1, .1, .1, 1);
+        static vec4f default_diffuse(1, 1, 1, 1);
 
         if(sh->texture_name.empty()) {
 
@@ -363,7 +360,7 @@ bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
     }
 
     char filename_copy[filename.size() + 1];
-    strncpy(filename_copy, filename.c_str(), filename.size() + 1); // Uhhhhgly.
+    strncpy(filename_copy, filename.c_str(), filename.size() + 1);
     std::string _dirname = std::string(dirname(filename_copy));
 
     bool success = ReadTriSrc(fp, _dirname, objects);

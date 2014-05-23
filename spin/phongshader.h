@@ -26,25 +26,23 @@ struct PhongShader : public Shader
     struct Material
     {
         typedef boost::shared_ptr<Material> sptr;
-        float diffuse[4];
-        float ambient[4];
-        float specular[4];
+        vec4f diffuse;
+        vec4f ambient;
+        vec4f specular;
         float shininess;
-        Material(const float diffuse_[4], const float ambient_[4],
-            const float specular_[4], const float shininess_)
-        {
-            for(int i = 0; i < 4; i++) diffuse[i] = diffuse_[i];
-            for(int i = 0; i < 4; i++) ambient[i] = ambient_[i];
-            for(int i = 0; i < 4; i++) specular[i] = specular_[i];
-            shininess = shininess_;
-        }
-        Material()
-        {
-            diffuse[0] = .8; diffuse[1] = .8; diffuse[2] = .8; diffuse[3] = 1;
-            ambient[0] = .2; ambient[1] = .2; ambient[2] = .2; ambient[3] = 1;
-            specular[0] = .8; specular[1] = .8; specular[2] = .8; specular[3] = 1;
-            shininess = 0;
-        }
+        Material(const vec4f& diffuse_, const vec4f& ambient_,
+            const vec4f& specular_, float shininess_) :
+            diffuse(diffuse_),
+            ambient(ambient_),
+            specular(specular_),
+            shininess(shininess_)
+        { }
+        Material() :
+            diffuse(vec4f(.8, .8, .8, 1)),
+            ambient(vec4f(.2, .2, .2, 1)),
+            specular(vec4f(.8, .8, .8, 1)),
+            shininess(0)
+        { }
     };
 
     struct MaterialUniforms
