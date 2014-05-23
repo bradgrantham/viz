@@ -3839,9 +3839,10 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
 
     static float objectDiffuse[4] = {.8, .7, .6, 1};
+    static float objectAmbient[4] = {.16, .14, .12, 1};
     static float objectSpecular[4] = {1, 1, 1, 1};
     static float objectShininess = 50;
-    Material::sptr mtl(new Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess));
+    Material::sptr mtl(new Material(objectDiffuse, objectAmbient, objectSpecular, objectShininess));
 
     DrawList::sptr drawlist(new DrawList);
     glGenVertexArrays(1, &drawlist->vertexArray);

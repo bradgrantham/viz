@@ -84,7 +84,7 @@ void DrawScene()
             glUniformMatrix4fv(shader->envu.projection, 1, GL_FALSE, projection.m_v);
             CheckOpenGL(__FILE__, __LINE__);
 
-            float lightPosition[4] = {0, 0, 1, 0};
+            float lightPosition[4] = {.577, .577, .577, 0};
             float lightColor[4] = {1, 1, 1, 1};
             glUniform4fv(shader->envu.lightPosition, 1, lightPosition);
             glUniform4fv(shader->envu.lightColor, 1, lightColor);

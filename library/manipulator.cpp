@@ -136,7 +136,7 @@ manipulator::manipulator(const box& bounds, float fov)
     m_worldY = vec3f(0.0f, 1.0f, 0.0f);
     m_worldZ = vec3f(0.0f, 0.0f, 1.0f);
 
-    m_center = vec3f(0.0f, 0.0f, 0.0f);
+    m_center = (bounds.m_min + bounds.m_max) / 2; // vec3f(0.0f, 0.0f, 0.0f);
 
     m_scale = vec3f(1.0f, 1.0f, 1.0f);
 

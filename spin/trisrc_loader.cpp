@@ -116,7 +116,7 @@ PhongShadedGeometry::sptr MakeShape(Material::sptr mtl, Vertex *vertices, size_t
 
     box bounds;
     for(int i = 0; i < vertexCount; i++)
-        bounds.extend(vertices[i].v);
+        bounds.extend(vertices[i].v[0], vertices[i].v[1], vertices[i].v[2]);
 
     return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
 }

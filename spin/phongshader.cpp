@@ -112,8 +112,8 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
 
 void PhongShader::ApplyMaterial(Material::sptr mtl)
 {
-    glUniform4fv(mtlu.ambient, 1, mtl->diffuse);
-    glUniform4fv(mtlu.diffuse, 1, mtl->ambient);
+    glUniform4fv(mtlu.ambient, 1, mtl->ambient);
+    glUniform4fv(mtlu.diffuse, 1, mtl->diffuse);
     glUniform4fv(mtlu.specular, 1, mtl->specular);
     glUniform1f(mtlu.shininess, mtl->shininess);
     glUseProgram(program); // can switch to tex here
@@ -181,8 +181,8 @@ const char *PhongShader::fragmentShaderText = "\n\
         vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
         vec3 refl = reflect(-ldir, normal);\n\
 \n\
-        vec4 diffuse = max(0, dot(normal, ldir)) * light_color * .8;\n\
-        vec4 ambient = light_color * .2;\n\
+        vec4 diffuse = max(0, dot(normal, ldir)) * light_color;\n\
+        vec4 ambient = light_color;\n\
         vec4 specular = pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
         color = diffuse * material_diffuse * vertex_color + ambient * material_ambient * vertex_color + specular * material_specular;\n\
