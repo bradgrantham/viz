@@ -25,8 +25,9 @@ manipulator.o: geometry.h manipulator.h vectormath.h
 drawable.o: drawable.h
 phongshader.o: drawable.h geometry.h phongshader.h vectormath.h
 builtin_loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h
+trisrc_loader.o: trisrc_loader.h drawable.h geometry.h phongshader.h vectormath.h
 
-CXXSOURCES      = spin.cpp vectormath.cpp manipulator.cpp drawable.cpp phongshader.cpp builtin_loader.cpp
+CXXSOURCES      = spin.cpp vectormath.cpp manipulator.cpp drawable.cpp phongshader.cpp builtin_loader.cpp trisrc_loader.cpp
 OBJECTS         = $(CXXSOURCES:.cpp=.o)
 
 spin: $(OBJECTS)

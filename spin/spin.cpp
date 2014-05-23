@@ -31,7 +31,7 @@
 
 #include "drawable.h"
 #include "builtin_loader.h"
-// #include "trisrc_loader.h"
+#include "trisrc_loader.h"
 
 //------------------------------------------------------------------------
 
@@ -255,8 +255,8 @@ bool LoadScene(const std::string& filename, std::vector<Drawable::sptr>& objects
 
     if(extension == "builtin") {
         return BuiltinLoader::Load(filename, objects);
-    // } else if(extension == "trisrc") {
-        // return TriSrcLoader::Load(filename, objects);
+    } else if(extension == "trisrc") {
+        return TriSrcLoader::Load(filename, objects);
     } else {
         return false;
     }
