@@ -72,6 +72,7 @@ static bool CheckProgramLink(GLuint program)
 
 static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::string& fragment_shader_text)
 {
+    CheckOpenGL(__FILE__, __LINE__);
     std::string spec_string;
 
     spec_string = "#version 140\n";
@@ -100,6 +101,7 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
     GLuint program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragment_shader);
+    CheckOpenGL(__FILE__, __LINE__);
 
     glLinkProgram(program);
     CheckOpenGL(__FILE__, __LINE__);
@@ -187,6 +189,11 @@ const char *PhongShader::fragmentShaderText = "\n\
     \n\
         color = diffuse * material_diffuse * vertex_color + ambient * material_ambient * vertex_color + specular * material_specular;\n\
     }\n";
+
+void PhongShader::Use()
+{
+    glUseProgram(program);
+}
 
 void PhongShader::Setup()
 {

@@ -17,7 +17,7 @@
 default: spin
 
 CXXFLAGS=-Wall -I/opt/local/include --std=c++11
-LDFLAGS=-L/opt/local/lib -lglfw -framework OpenGL -framework Cocoa -framework IOkit
+LDFLAGS=-L/opt/local/lib -lglfw -lfreeimageplus -framework OpenGL -framework Cocoa -framework IOkit
 
 spin.o: builtin_loader.h drawable.h geometry.h manipulator.h phongshader.h vectormath.h
 vectormath.o: vectormath.h

@@ -17,11 +17,98 @@
 #include <string>
 #include <map>
 #include <libgen.h>
+#include <FreeImagePlus.h>
 #include "trisrc_loader.h"
 #include "phongshader.h"
 
+#define GLFW_INCLUDE_GLCOREARB
+#include <GLFW/glfw3.h>
+
 namespace TriSrcLoader
 {
+
+void LoadCheckerBoard(int w, int h, int checkw, int checkh)
+{
+    unsigned char image[w * h * 3];
+
+    for(int j = 0; j < h; j++)
+        for(int i = 0; i < w; i++) {
+            int value = (((w / checkw) + (h / checkh)) % 2 == 0) ? 255 : 0;
+            image[(j * checkw + i) * 3 + 0] = value;
+            image[(j * checkw + i) * 3 + 1] = value;
+            image[(j * checkw + i) * 3 + 2] = value;
+        }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    CheckOpenGL(__FILE__, __LINE__);
+}
+
+GLuint LoadTexture(const std::string& filename)
+{
+    GLuint texture;
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    fipImage image;
+    bool success;
+
+    if (!(success = image.load(filename.c_str()))) {
+
+        std::cerr << "LoadTexture: Failed to load image from " <<
+            filename << std::endl;
+
+    } else if (!(success = image.convertTo32Bits())) {
+
+        std::cerr << "LoadTexture: Couldn't convert image to 24 bits " <<
+            filename << std::endl;
+
+    } else {
+
+        GLenum sourceFormat;
+        GLenum sourceType;
+        bool handled = false;
+
+        if (image.getImageType() == FIT_RGBF) {
+
+            sourceFormat = GL_RGB;
+            sourceType = GL_FLOAT;
+            handled = true;
+
+        } else if (image.getImageType() == FIT_BITMAP){
+
+            unsigned int redMask = FreeImage_GetRedMask(image);
+            sourceFormat = (redMask == 0x00FF0000)? GL_BGRA : GL_RGBA;
+            sourceType = GL_UNSIGNED_BYTE;
+            handled = true;
+
+        }
+
+        if(!handled) {
+            std::cerr << "Unhandled FIP image type: " << image.getImageType() << std::endl;
+            success = false;
+
+        } else {
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.getWidth(), image.getHeight(), 0, sourceFormat, sourceType, image.accessPixels());
+            glGenerateMipmap(GL_TEXTURE_2D);
+    CheckOpenGL(__FILE__, __LINE__);
+        }
+
+    }
+
+    if (!success) {
+        std::cerr << "GL Renderer: loading checkerboard instead." << std::endl;
+        LoadCheckerBoard(64, 64, 4, 4);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, GL_NONE);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    return texture;
+}
 
 struct Vertex
 {
@@ -242,12 +329,25 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
         static float default_ambient[4] = {.1, .1, .1, 1};
         static float default_diffuse[4] = {1, 1, 1, 1};
 
-        PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
+        if(sh->texture_name.empty()) {
 
-        // XXX transparency
-        // XXX texture
+            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
 
-        objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size()));
+            // XXX transparency
+
+            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size()));
+
+        } else {
+
+            GLuint texture = LoadTexture(sh->texture_name);
+            
+            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
+
+            // XXX transparency
+
+            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size()));
+
+        }
     }
 
     return true;

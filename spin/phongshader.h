@@ -55,6 +55,7 @@ struct PhongShader : public Shader
         GLuint shininess;
     };
 
+    GLuint program;
     MaterialUniforms mtlu;
 
     int positionAttrib;
@@ -66,6 +67,7 @@ struct PhongShader : public Shader
 
     void ApplyMaterial(Material::sptr mtl);
     virtual void Setup();
+    virtual void Use();
     virtual ~PhongShader() {}
 
     static PhongShader::sptr GetForCurrentContext();

@@ -80,6 +80,7 @@ void DrawScene()
         Shader::sptr shader = ob->GetShader();
         if(shader.get() != prevshader.get())
         {
+            shader->Use();
             mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
             glUniformMatrix4fv(shader->envu.projection, 1, GL_FALSE, projection.m_v);
             CheckOpenGL(__FILE__, __LINE__);

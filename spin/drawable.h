@@ -74,7 +74,7 @@ struct Shader
 {
     typedef boost::shared_ptr<Shader> sptr;
     EnvironmentUniforms envu;
-    GLuint program;
+    virtual void Use() = 0;
     virtual void Setup() = 0;
     virtual ~Shader() {}
 };
