@@ -64,9 +64,7 @@ struct VertexComparator
 };
 
 
-    // Material::sptr mtl(new Material(objectDiffuse, objectDiffuse, objectSpecular, objectShininess));
-
-PhongShadedGeometry::sptr MakeShape(Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount)
+PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
 
@@ -97,7 +95,7 @@ PhongShadedGeometry::sptr MakeShape(Material::sptr mtl, Vertex *vertices, size_t
     size_t stride = coordSize + normalSize + colorSize + texcoordSize;
     size_t normalOffset = coordSize;
     size_t colorOffset = normalOffset + normalSize;
-    size_t texcoordOffset = colorOffset + colorSize;
+    // size_t texcoordOffset = colorOffset + colorSize;
 
     glVertexAttribPointer(shader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
     glEnableVertexAttribArray(shader->positionAttrib);
@@ -241,14 +239,10 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
     for(auto itr = shapes.begin(); itr != shapes.end(); itr++) {
         indexed_shape *sh = itr->second;
 
-        Material::sptr mtl(new Material);
         static float default_ambient[4] = {.1, .1, .1, 1};
         static float default_diffuse[4] = {1, 1, 1, 1};
 
-        mtl->shininess = sh->shininess;
-        for(int i = 0; i < 4; i++) mtl->specular[i] = sh->specular[i];
-        for(int i = 0; i < 4; i++) mtl->ambient[i] = default_ambient[i];
-        for(int i = 0; i < 4; i++) mtl->diffuse[i] = default_diffuse[i];
+        PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
 
         // XXX transparency
         // XXX texture

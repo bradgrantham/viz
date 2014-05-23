@@ -110,7 +110,7 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
 }
 
 
-void PhongShader::ApplyMaterial(Material::sptr mtl)
+void PhongShader::ApplyMaterial(PhongShader::Material::sptr mtl)
 {
     glUniform4fv(mtlu.ambient, 1, mtl->ambient);
     glUniform4fv(mtlu.diffuse, 1, mtl->diffuse);
