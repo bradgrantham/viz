@@ -31,7 +31,7 @@
 
 #include "drawable.h"
 #include "builtin_loader.h"
-#include "trisrc_loader.h"
+// #include "trisrc_loader.h"
 
 //------------------------------------------------------------------------
 
