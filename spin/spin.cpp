@@ -113,7 +113,8 @@ void InitializeGL()
     glClearColor(.25, .25, .25, 0);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    // glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
 
     CheckOpenGL(__FILE__, __LINE__);
 }
