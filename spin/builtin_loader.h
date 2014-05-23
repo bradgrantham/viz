@@ -19,7 +19,7 @@
 namespace BuiltinLoader
 {
 
-bool Load(const std::string& filename, Drawable::sptr& scene);
+bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects);
 
 };
 

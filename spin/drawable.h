@@ -75,8 +75,13 @@ struct DrawList
     };
     GLuint vertexArray;
     bool indexed;
+    GLenum indexType;
     std::vector<PrimInfo> prims;
     void Draw(bool drawWireframe);
+    DrawList() :
+        vertexArray(0),
+        indexed(false)
+    {}
 };
 
 struct EnvironmentUniforms

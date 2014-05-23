@@ -68,6 +68,12 @@ struct box
         extend(v[0], v[1], v[2]);
     }
 
+    void extend(const box& b)
+    {
+        extend(b.m_min);
+        extend(b.m_max);
+    }
+
     void extend(float x, float y, float z, float r)
     {
         m_min[0] = std::min(m_min[0], x - r);

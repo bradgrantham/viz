@@ -14,6 +14,8 @@
 // limitations under the License.
 // 
 
+#include <vector>
+#include <map>
 #include "builtin_loader.h"
 #include "phongshader.h"
 
@@ -3806,6 +3808,32 @@ struct Vertex g64GonVertices[] = {
 
 int g64GonTriangleCount = 244;
 
+struct VertexComparator
+{
+    bool operator()(const Vertex& v1, const Vertex& v2) const
+    {
+        for(int i = 0; i < 3; i++)
+            if(v1.v[i] < v2.v[i]) {
+                return true;
+            } else if(v1.v[i] > v2.v[i]) {
+                return false;
+            }
+        for(int i = 0; i < 3; i++)
+            if(v1.n[i] < v2.n[i]) {
+                return true;
+            } else if(v1.n[i] > v2.n[i]) {
+                return false;
+            }
+        for(int i = 0; i < 4; i++)
+            if(v1.c[i] < v2.c[i]) {
+                return true;
+            } else if(v1.c[i] > v2.c[i]) {
+                return false;
+            }
+        return false;
+    }
+};
+
 PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
@@ -3818,15 +3846,57 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     DrawList::sptr drawlist(new DrawList);
     glGenVertexArrays(1, &drawlist->vertexArray);
     glBindVertexArray(drawlist->vertexArray);
-    drawlist->indexed = false;
     drawlist->prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, triangleCount * 3));
     CheckOpenGL(__FILE__, __LINE__);
 
     GLuint vertexBuffer;
     glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * triangleCount * 3, vertices, GL_STATIC_DRAW);
-    CheckOpenGL(__FILE__, __LINE__);
+
+    const int do_indexing = true;
+    if(do_indexing) {
+
+        unsigned int indices[triangleCount * 3];
+        std::vector<Vertex> unique_vertices;
+        std::map<Vertex, unsigned int, VertexComparator> vertex_map;
+
+        for(int i = 0; i < triangleCount * 3; i++) {
+            Vertex &v = vertices[i];
+            auto vx = vertex_map.find(v);
+            if(vx == vertex_map.end()) {
+                unique_vertices.push_back(v);
+                unsigned int index = unique_vertices.size() - 1;
+                indices[i] = index;
+                vertex_map[v] = index;
+            } else {
+                indices[i] = vx->second;
+            }
+        }
+
+        if(false) printf("indexed %d vertices down to %zd vertices\n",
+            triangleCount * 3, unique_vertices.size());
+
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * unique_vertices.size(), &unique_vertices[0], GL_STATIC_DRAW);
+        CheckOpenGL(__FILE__, __LINE__);
+
+        GLuint indexBuffer;
+        glGenBuffers(1, &indexBuffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * triangleCount * 3, indices, GL_STATIC_DRAW);
+        CheckOpenGL(__FILE__, __LINE__);
+
+        drawlist->indexed = true;
+        drawlist->indexType = GL_UNSIGNED_INT;
+
+    } else {
+
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * triangleCount * 3, vertices, GL_STATIC_DRAW);
+        CheckOpenGL(__FILE__, __LINE__);
+
+        drawlist->indexed = false;
+
+    }
 
     size_t coordSize = sizeof(float) * 3;
     size_t normalSize = sizeof(float) * 3;
@@ -3835,6 +3905,8 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     size_t stride = coordSize + normalSize + colorSize;
     size_t normalOffset = coordSize;
     size_t colorOffset = normalOffset + normalSize;
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
     glVertexAttribPointer(shader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
     glEnableVertexAttribArray(shader->positionAttrib);
@@ -3855,15 +3927,15 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
 }
 
-bool Load(const std::string& filename, Drawable::sptr& scene)
+bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
 {
     int index = filename.find_last_of(".");
     std::string model = filename.substr(0, index);
     if(model == "64gon") {
-        scene = InitializePolytope(g64GonVertices, g64GonTriangleCount);
+        objects.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
         return true;
     } else if(model == "256gon") {
-        scene = InitializePolytope(g256GonVertices, g256GonTriangleCount);
+        objects.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
         return true;
     } else {
         return false;
