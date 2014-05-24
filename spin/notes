@@ -1,0 +1,6 @@
+To concatenate, successively deeper matrices, pre-multiply:
+    mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
+
+When changing the parent manip of a manip, set the frame:
+    if(gCurrentManip == gSceneManip)
+        gObjectManip->set_frame(gSceneManip->m_matrix);
