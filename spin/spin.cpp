@@ -37,7 +37,6 @@
 //------------------------------------------------------------------------
 
 static manipulator *gSceneManip;
-static manipulator *gObjectManip;
 static manipulator *gCurrentManip = NULL;
 
 static bool gDrawWireframe = false;
@@ -170,7 +169,6 @@ void Group::Visit(const Environment& env, DisplayList& displaylist)
         (*it)->Visit(env2, displaylist);
 }
 
-
 void DrawScene()
 {
     float nearClip, farClip;
@@ -210,11 +208,14 @@ void DrawScene()
             /* draw floor, draw shadow, etc */
 
             // XXX same object matrix for all objects
-            mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
+            mat4f modelview = gSceneManip->m_matrix;
+
             mat4f modelview_normal = modelview;
-            // XXX should not invert every time; parallel normal matrix math path?
+            // XXX should not invert every time
+            // XXX parallel normal matrix math path?
             modelview_normal.transpose();
             modelview_normal.invert();
+
             glUniformMatrix4fv(envu.modelview, 1, GL_FALSE, modelview.m_v);
             glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
 
@@ -250,9 +251,6 @@ static void InitializeScene(std::vector<Drawable::sptr>& objects)
     }
     gSceneManip = new manipulator(bounds, gFOV / 180.0 * 3.14159);
 
-    gObjectManip = new manipulator();
-    gObjectManip->calculate_matrix();
-
     gCurrentManip = gSceneManip;
 }
 
@@ -283,14 +281,6 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
 
             case 'Z':
                 gCurrentManip->m_mode = manipulator::DOLLY;
-                break;
-
-            case '1':
-                gCurrentManip = gSceneManip;
-                break;
-
-            case '2':
-                gCurrentManip = gObjectManip;
                 break;
 
             case 'Q': case '\033':
@@ -341,16 +331,12 @@ static void MotionCallback(GLFWwindow *window, double x, double y)
 
     if(gButtonPressed == 1) {
         gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
-        if(gCurrentManip == gSceneManip)
-            gObjectManip->set_frame(gSceneManip->m_matrix);
     }
 }
 
 static void ScrollCallback(GLFWwindow *window, double dx, double dy)
 {
     gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
-    if(gCurrentManip == gSceneManip)
-        gObjectManip->set_frame(gSceneManip->m_matrix);
 }
 
 static void DrawFrame(GLFWwindow *window)
