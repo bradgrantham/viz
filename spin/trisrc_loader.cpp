@@ -94,7 +94,7 @@ GLuint LoadTexture(const std::string& filename)
             glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image.getWidth(), image.getHeight(), 0, sourceFormat, sourceType, image.accessPixels());
             glGenerateMipmap(GL_TEXTURE_2D);
-    CheckOpenGL(__FILE__, __LINE__);
+            CheckOpenGL(__FILE__, __LINE__);
         }
 
     }
@@ -151,9 +151,12 @@ struct VertexComparator
 };
 
 
-PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount)
+PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount, bool textured)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
+
+    PhongShader::ProgramVariant& vt = textured ? shader->textured : shader->nontextured;
+    glUseProgram(vt.program);
 
     DrawList::sptr drawlist(new DrawList);
     glGenVertexArrays(1, &drawlist->vertexArray);
@@ -182,20 +185,22 @@ PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *ver
     size_t stride = coordSize + normalSize + colorSize + texcoordSize;
     size_t normalOffset = coordSize;
     size_t colorOffset = normalOffset + normalSize;
-    // size_t texcoordOffset = colorOffset + colorSize;
+    size_t texcoordOffset = colorOffset + colorSize;
 
-    glVertexAttribPointer(shader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glEnableVertexAttribArray(shader->positionAttrib);
+    glVertexAttribPointer(vt.positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(vt.positionAttrib);
 
-    glVertexAttribPointer(shader->normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
-    glEnableVertexAttribArray(shader->normalAttrib);
+    glVertexAttribPointer(vt.normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(vt.normalAttrib);
 
-    glVertexAttribPointer(shader->colorAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)colorOffset);
-    glEnableVertexAttribArray(shader->colorAttrib);
+    glVertexAttribPointer(vt.colorAttrib, 4, GL_FLOAT, GL_FALSE, stride, (void*)colorOffset);
+    glEnableVertexAttribArray(vt.colorAttrib);
 
-    // glVertexAttribPointer(shader->texcoordAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)colorOffset);
-    // glEnableVertexAttribArray(shader->texcoordAttrib);
-    CheckOpenGL(__FILE__, __LINE__);
+    if(textured) {
+        glVertexAttribPointer(vt.texcoordAttrib, 2, GL_FLOAT, GL_FALSE, stride, (void*)texcoordOffset);
+        glEnableVertexAttribArray(vt.texcoordAttrib);
+        CheckOpenGL(__FILE__, __LINE__);
+    }
 
     glBindVertexArray(GL_NONE);
 
@@ -332,17 +337,18 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
 
             // XXX transparency
 
-            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size()));
+            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), false));
 
         } else {
 
             GLuint texture = LoadTexture(sh->texture_name);
+            printf("texture is %u\n", texture);
             
-            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
+            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, texture, default_ambient, sh->specular, sh->shininess));
 
             // XXX transparency
 
-            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size()));
+            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), true));
 
         }
     }

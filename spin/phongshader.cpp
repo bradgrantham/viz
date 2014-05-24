@@ -111,14 +111,20 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
     return program;
 }
 
-
-void PhongShader::ApplyMaterial(PhongShader::Material::sptr mtl)
+mvoid PhongShader::ProgramVariant::ApplyMaterial(PhongShader::Material::sptr mtl)
 {
+    glUseProgram(program); // can switch to tex here
     glUniform4fv(mtlu.ambient, 1, mtl->ambient);
     glUniform4fv(mtlu.diffuse, 1, mtl->diffuse);
     glUniform4fv(mtlu.specular, 1, mtl->specular);
     glUniform1f(mtlu.shininess, mtl->shininess);
-    glUseProgram(program); // can switch to tex here
+    if(mtlu.diffuseTexture != -1)
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mtl->diffuseTexture);
+        glUniform1i(mtlu.diffuseTexture, 0);
+    }
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 const char *PhongShader::vertexShaderText = "\n\
@@ -128,11 +134,17 @@ const char *PhongShader::vertexShaderText = "\n\
     in vec3 position;\n\
     in vec3 normal;\n\
     in vec4 color;\n\
+    #if defined(TEXTURING)\n\
+    in vec2 texcoord;\n\
+    #endif\n\
     \n\
     out vec3 vertex_normal;\n\
     out vec4 vertex_position;\n\
     out vec4 vertex_color;\n\
     out vec3 eye_direction;\n\
+    #if defined(TEXTURING)\n\
+    out vec2 vertex_texcoord;\n\
+    #endif\n\
     \n\
     void main()\n\
     {\n\
@@ -140,6 +152,9 @@ const char *PhongShader::vertexShaderText = "\n\
         vertex_normal = (modelview_normal_matrix * vec4(normal, 0.0)).xyz;\n\
         vertex_position = modelview_matrix * vec4(position, 1.0);\n\
         vertex_color = color;\n\
+        #if defined(TEXTURING)\n\
+        vertex_texcoord = texcoord;\n\
+        #endif\n\
         eye_direction = -vertex_position.xyz;\n\
     \n\
         gl_Position = projection_matrix * modelview_matrix * vec4(position, 1.0);\n\
@@ -155,9 +170,16 @@ const char *PhongShader::fragmentShaderText = "\n\
     uniform vec4 light_position;\n\
     uniform vec4 light_color;\n\
     \n\
+    #if defined(TEXTURING)\n\
+    uniform sampler2D material_diffuse_texture;\n\
+    #endif\n\
+    \n\
     in vec3 vertex_normal;\n\
     in vec4 vertex_position;\n\
     in vec4 vertex_color;\n\
+    #if defined(TEXTURING)\n\
+    in vec2 vertex_texcoord;\n\
+    #endif\n\
     in vec3 eye_direction;\n\
     out vec4 color;\n\
     \n\
@@ -178,47 +200,58 @@ const char *PhongShader::fragmentShaderText = "\n\
     \n\
         int light;\n\
         vec3 edir = normalize(eye_direction);\n\
+        if(dot(normal, edir) < 0)\n\
+            normal *= -1;\n\
     \n\
         vec4 light_pos = light_position;\n\
         vec3 ldir = normalize(unitvec(vertex_position, light_pos));\n\
         vec3 refl = reflect(-ldir, normal);\n\
 \n\
+        #if defined(TEXTURING)\n\
+        vec4 diffuse = max(0, dot(normal, ldir)) * light_color * texture(material_diffuse_texture, vertex_texcoord); ;\n\
+        #else\n\
         vec4 diffuse = max(0, dot(normal, ldir)) * light_color;\n\
+        #endif\n\
         vec4 ambient = light_color;\n\
         vec4 specular = pow(max(0, dot(refl, edir)), material_shininess) * light_color * .8;\n\
     \n\
         color = diffuse * material_diffuse * vertex_color + ambient * material_ambient * vertex_color + specular * material_specular;\n\
     }\n";
 
-void PhongShader::Use()
+void SetupVariant(bool texturing, PhongShader::ProgramVariant& v)
 {
-    glUseProgram(program);
+    std::string preamble = texturing ? "#define TEXTURING\n" : "#undef TEXTURING\n";
+    v.program = GenerateProgram(preamble + PhongShader::vertexShaderText, preamble + PhongShader::fragmentShaderText);
+    CheckOpenGL(__FILE__, __LINE__);
+
+    glUseProgram(v.program);
+
+    v.positionAttrib = glGetAttribLocation(v.program, "position");
+    v.normalAttrib = glGetAttribLocation(v.program, "normal");
+    v.colorAttrib = glGetAttribLocation(v.program, "color");
+    if(texturing) 
+        v.texcoordAttrib = glGetAttribLocation(v.program, "texcoord");
+    CheckOpenGL(__FILE__, __LINE__);
+
+    v.mtlu.diffuse = glGetUniformLocation(v.program, "material_diffuse");
+    v.mtlu.diffuseTexture = texturing ? glGetUniformLocation(v.program, "material_diffuse_texture") : -1;
+    v.mtlu.specular = glGetUniformLocation(v.program, "material_specular");
+    v.mtlu.ambient = glGetUniformLocation(v.program, "material_ambient");
+    v.mtlu.shininess = glGetUniformLocation(v.program, "material_shininess");
+
+    v.envu.lightPosition = glGetUniformLocation(v.program, "light_position");
+    v.envu.lightColor = glGetUniformLocation(v.program, "light_color");
+
+    v.envu.modelview = glGetUniformLocation(v.program, "modelview_matrix");
+    v.envu.modelviewNormal = glGetUniformLocation(v.program, "modelview_normal_matrix");
+    v.envu.projection = glGetUniformLocation(v.program, "projection_matrix");
+    CheckOpenGL(__FILE__, __LINE__);
 }
 
 void PhongShader::Setup()
 {
-    program = GenerateProgram(vertexShaderText, fragmentShaderText);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    positionAttrib = glGetAttribLocation(program, "position");
-    normalAttrib = glGetAttribLocation(program, "normal");
-    colorAttrib = glGetAttribLocation(program, "color");
-    CheckOpenGL(__FILE__, __LINE__);
-
-    glUseProgram(program);
-    CheckOpenGL(__FILE__, __LINE__);
-
-    mtlu.diffuse = glGetUniformLocation(program, "material_diffuse");
-    mtlu.specular = glGetUniformLocation(program, "material_specular");
-    mtlu.ambient = glGetUniformLocation(program, "material_ambient");
-    mtlu.shininess = glGetUniformLocation(program, "material_shininess");
-
-    envu.lightPosition = glGetUniformLocation(program, "light_position");
-    envu.lightColor = glGetUniformLocation(program, "light_color");
-
-    envu.modelview = glGetUniformLocation(program, "modelview_matrix");
-    envu.modelviewNormal = glGetUniformLocation(program, "modelview_normal_matrix");
-    envu.projection = glGetUniformLocation(program, "projection_matrix");
+    SetupVariant(false, nontextured);
+    SetupVariant(true, textured);
 }
 
 PhongShader::sptr PhongShader::gShader;
@@ -233,11 +266,30 @@ PhongShader::sptr PhongShader::GetForCurrentContext()
     return gShader;
 }
 
+GLuint PhongShadedGeometry::GetProgram()
+{
+    if(material->diffuseTexture != GL_NONE)
+        return PhongShader::GetForCurrentContext()->textured.program;
+    else
+        return PhongShader::GetForCurrentContext()->nontextured.program;
+}
+
+EnvironmentUniforms PhongShadedGeometry::GetEnvironmentUniforms()
+{
+    if(material->diffuseTexture != GL_NONE)
+        return PhongShader::GetForCurrentContext()->textured.envu;
+    else
+        return PhongShader::GetForCurrentContext()->nontextured.envu;
+}
+
 void PhongShadedGeometry::Draw(float objectTime, bool drawWireframe)
 {
     CheckOpenGL(__FILE__, __LINE__);
 
-    PhongShader::GetForCurrentContext()->ApplyMaterial(material);
+    if(material->diffuseTexture != GL_NONE)
+        PhongShader::GetForCurrentContext()->textured.ApplyMaterial(material);
+    else
+        PhongShader::GetForCurrentContext()->nontextured.ApplyMaterial(material);
     CheckOpenGL(__FILE__, __LINE__);
 
     drawList->Draw(drawWireframe);

@@ -3837,6 +3837,8 @@ struct VertexComparator
 PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
+    PhongShader::ProgramVariant& nt = shader->nontextured;
+    glUseProgram(nt.program);
 
     static vec4f diffuse(.8, .7, .6, 1);
     static vec4f ambient(.16, .14, .12, 1);
@@ -3909,14 +3911,14 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
 
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
-    glVertexAttribPointer(shader->positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
-    glEnableVertexAttribArray(shader->positionAttrib);
+    glVertexAttribPointer(nt.positionAttrib, 3, GL_FLOAT, GL_FALSE, stride, 0);
+    glEnableVertexAttribArray(nt.positionAttrib);
 
-    glVertexAttribPointer(shader->normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
-    glEnableVertexAttribArray(shader->normalAttrib);
+    glVertexAttribPointer(nt.normalAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)normalOffset);
+    glEnableVertexAttribArray(nt.normalAttrib);
 
-    glVertexAttribPointer(shader->colorAttrib, 3, GL_FLOAT, GL_FALSE, stride, (void*)colorOffset);
-    glEnableVertexAttribArray(shader->colorAttrib);
+    glVertexAttribPointer(nt.colorAttrib, 4, GL_FLOAT, GL_FALSE, stride, (void*)colorOffset);
+    glEnableVertexAttribArray(nt.colorAttrib);
     CheckOpenGL(__FILE__, __LINE__);
 
     glBindVertexArray(GL_NONE);

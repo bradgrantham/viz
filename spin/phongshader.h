@@ -26,19 +26,34 @@ struct PhongShader
     struct Material
     {
         typedef boost::shared_ptr<Material> sptr;
+
         vec4f diffuse;
+        GLuint diffuseTexture;
         vec4f ambient;
         vec4f specular;
         float shininess;
+
         Material(const vec4f& diffuse_, const vec4f& ambient_,
             const vec4f& specular_, float shininess_) :
             diffuse(diffuse_),
+            diffuseTexture(GL_NONE),
             ambient(ambient_),
             specular(specular_),
             shininess(shininess_)
         { }
+
+        Material(const vec4f& diffuse_, GLuint diffuseTexture_, const vec4f& ambient_,
+            const vec4f& specular_, float shininess_) :
+            diffuse(diffuse_),
+            diffuseTexture(diffuseTexture_),
+            ambient(ambient_),
+            specular(specular_),
+            shininess(shininess_)
+        { }
+
         Material() :
             diffuse(vec4f(.8, .8, .8, 1)),
+            diffuseTexture(GL_NONE),
             ambient(vec4f(.2, .2, .2, 1)),
             specular(vec4f(.8, .8, .8, 1)),
             shininess(0)
@@ -47,26 +62,30 @@ struct PhongShader
 
     struct MaterialUniforms
     {
-        GLuint diffuse;
-        GLuint ambient;
-        GLuint specular;
-        GLuint shininess;
+        GLint diffuse;
+        GLint ambient;
+        GLint specular;
+        GLint shininess;
+        GLint diffuseTexture; // unused in nontextured 
     };
 
-    GLuint program;
-    MaterialUniforms mtlu;
-    EnvironmentUniforms envu;
+    struct ProgramVariant {
+        GLuint program;
+        MaterialUniforms mtlu;
+        EnvironmentUniforms envu;
 
-    int positionAttrib;
-    int normalAttrib; 
-    int colorAttrib; 
+        int positionAttrib;
+        int normalAttrib; 
+        int colorAttrib; 
+        int texcoordAttrib;  // unused in nontextured
+
+        void ApplyMaterial(Material::sptr mtl);
+    } nontextured, textured;
 
     static const char *vertexShaderText;
     static const char *fragmentShaderText;
 
-    void ApplyMaterial(Material::sptr mtl);
     virtual void Setup();
-    virtual void Use();
     virtual ~PhongShader() {}
 
     static PhongShader::sptr GetForCurrentContext();
@@ -84,8 +103,8 @@ struct PhongShadedGeometry : public Drawable
         material(mtl)
     {}
     virtual void Draw(float objectTime, bool drawWireframe);
-    virtual GLuint GetProgram() { return PhongShader::GetForCurrentContext()->program; }
-    virtual EnvironmentUniforms GetEnvironmentUniforms() { return PhongShader::GetForCurrentContext()->envu; }
+    virtual GLuint GetProgram();
+    virtual EnvironmentUniforms GetEnvironmentUniforms();
     virtual ~PhongShadedGeometry() {}
 };
 
