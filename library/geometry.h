@@ -83,7 +83,15 @@ struct box
         m_max[1] = std::max(m_max[1], y + r);
         m_max[2] = std::max(m_max[2], z + r);
     }
-
 };
+
+inline box operator*(const box& b, const mat4f& m)
+{
+    box newb;
+    newb.extend(b.m_min * m);
+    newb.extend(b.m_max * m);
+    return newb;
+}
+
 
 #endif /* _GEOMETRY_H */
