@@ -111,7 +111,7 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
     return program;
 }
 
-mvoid PhongShader::ProgramVariant::ApplyMaterial(PhongShader::Material::sptr mtl)
+void PhongShader::ProgramVariant::ApplyMaterial(PhongShader::Material::sptr mtl)
 {
     glUseProgram(program); // can switch to tex here
     glUniform4fv(mtlu.ambient, 1, mtl->ambient);
