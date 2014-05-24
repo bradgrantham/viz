@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <map>
 #include <limits>
 #include <algorithm>
 #include <vector>
@@ -56,6 +57,120 @@ std::vector<Drawable::sptr> gObjects;
 
 float gFOV = 45;
 
+struct Light
+{
+    vec4f position;
+    vec4f color;
+    Light(const vec4f& position_, const vec4f color_) :
+        position(position_),
+        color(color_)
+    {}
+};
+
+struct Environment
+{
+    mat4f projection;
+    mat4f modelview;
+    std::vector<Light> lights; // only one supported at present
+
+    Environment(const mat4f& projection_, const mat4f& modelview_, const std::vector<Light>& lights_) :
+        projection(projection_),
+        modelview(modelview_),
+        lights(lights_)
+    {}
+};
+
+struct DisplayInfo
+{
+    mat4f modelview;
+    GLuint program;
+
+    DisplayInfo(const mat4f& modelview_, GLuint program_) :
+        modelview(modelview_),
+        program(program_)
+    {}
+
+    struct Comparator
+    {
+        bool operator() (const DisplayInfo& d1, const DisplayInfo& d2) const
+        {
+            for(int i = 0; i < 16; i++) {
+                if(d1.modelview.m_v[i] < d2.modelview.m_v[i])
+                    return true;
+                if(d1.modelview.m_v[i] < d2.modelview.m_v[i])
+                    return false;
+            }
+            if(d1.program < d2.program)
+                return true;
+            if(d1.program < d2.program)
+                return false;
+            return false;
+        }
+    };
+
+};
+typedef std::map<DisplayInfo, std::vector<Drawable::sptr>, DisplayInfo::Comparator> DisplayList;
+
+struct Node
+{
+    typedef boost::shared_ptr<Node> sptr;
+    box bounds; // Later can cull
+    virtual void Visit(const Environment& env, DisplayList& displaylist) = 0;
+
+    Node(const box& bounds_) :
+        bounds(bounds_)
+    {}
+};
+
+struct Shape : public Node
+{
+    typedef boost::shared_ptr<Shape> sptr;
+    Drawable::sptr drawable;
+    virtual void Visit(const Environment& env, DisplayList& displaylist);
+    Shape(const Drawable::sptr& drawable_) :
+        Node(drawable->bounds),
+        drawable(drawable_)
+    {}
+};
+
+void Shape::Visit(const Environment& env, DisplayList& displaylist)
+{
+    displaylist[DisplayInfo(env.modelview, drawable->GetProgram())].push_back(drawable);
+}
+
+box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children)
+{
+    box b;
+
+    for(auto it = children.begin(); it != children.end(); it++)
+        b.extend((*it)->bounds * transform);
+
+    return b;
+}
+
+struct Group : public Node 
+{
+    typedef boost::shared_ptr<Group> sptr;
+    mat4f transform;
+    std::vector<Node::sptr> children;
+
+    virtual void Visit(const Environment& env, DisplayList& displaylist);
+    Group(const mat4f& transform_, std::vector<Node::sptr> children_) :
+        Node(TransformedBounds(transform_, children_)),
+        transform(transform_),
+        children(children_)
+    {}
+};
+
+void Group::Visit(const Environment& env, DisplayList& displaylist)
+{
+    mat4f newtransform = transform * env.modelview;
+    Environment env2(env.projection, newtransform, env.lights);
+    for(auto it = children.begin(); it != children.end(); it++)
+        (*it)->Visit(env2, displaylist);
+}
+
+
 void DrawScene()
 {
     float nearClip, farClip;
@@ -75,8 +190,7 @@ void DrawScene()
     frustumLeft = -frustumRight;
     mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
 
-    float lightPosition[4] = {.577, .577, .577, 0};
-    float lightColor[4] = {1, 1, 1, 1};
+    Light light(vec4f(.577, .577, .577, 0), vec4f(1, 1, 1, 1));
 
     GLuint prevprogram;
     for(auto it = gObjects.begin(); it != gObjects.end(); it++) {
@@ -89,8 +203,8 @@ void DrawScene()
             glUniformMatrix4fv(envu.projection, 1, GL_FALSE, projection.m_v);
             CheckOpenGL(__FILE__, __LINE__);
 
-            glUniform4fv(envu.lightPosition, 1, lightPosition);
-            glUniform4fv(envu.lightColor, 1, lightColor);
+            glUniform4fv(envu.lightPosition, 1, light.position.m_v);
+            glUniform4fv(envu.lightColor, 1, light.color.m_v);
             CheckOpenGL(__FILE__, __LINE__);
 
             /* draw floor, draw shadow, etc */
