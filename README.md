@@ -4,7 +4,7 @@ viz
 I'm sort of keeping a reboot here of my old graphics tools.  Feel free to fork or request pull or open issue.
 
 ![64gon in spin sample](https://raw.githubusercontent.com/bradgrantham/viz/master/spin_64gon.png)
-![SLK TriSrc in spin sample](https://raw.githubusercontent.com/bradgrantham/viz/master/slk.png)
+![sub.obj converted to TriSrc in spin sample](https://raw.githubusercontent.com/bradgrantham/viz/master/sub.png)
 ![Buddha TriSrc in spin sample](https://raw.githubusercontent.com/bradgrantham/viz/master/buddha.png)
 
 Build requirements:
