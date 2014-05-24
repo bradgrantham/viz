@@ -73,22 +73,24 @@ void DrawScene()
     frustumBottom = -frustumTop;
     frustumRight = frustumTop * gWindowWidth / gWindowHeight;
     frustumLeft = -frustumRight;
+    mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
 
-    Shader::sptr prevshader;
+    float lightPosition[4] = {.577, .577, .577, 0};
+    float lightColor[4] = {1, 1, 1, 1};
+
+    GLuint prevprogram;
     for(auto it = gObjects.begin(); it != gObjects.end(); it++) {
         Drawable::sptr ob(*it);
-        Shader::sptr shader = ob->GetShader();
-        if(shader.get() != prevshader.get())
+        GLuint program = ob->GetProgram();
+        if(program != prevprogram)
         {
-            shader->Use();
-            mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
-            glUniformMatrix4fv(shader->envu.projection, 1, GL_FALSE, projection.m_v);
+            glUseProgram(program);
+            EnvironmentUniforms envu = ob->GetEnvironmentUniforms();
+            glUniformMatrix4fv(envu.projection, 1, GL_FALSE, projection.m_v);
             CheckOpenGL(__FILE__, __LINE__);
 
-            float lightPosition[4] = {.577, .577, .577, 0};
-            float lightColor[4] = {1, 1, 1, 1};
-            glUniform4fv(shader->envu.lightPosition, 1, lightPosition);
-            glUniform4fv(shader->envu.lightColor, 1, lightColor);
+            glUniform4fv(envu.lightPosition, 1, lightPosition);
+            glUniform4fv(envu.lightColor, 1, lightColor);
             CheckOpenGL(__FILE__, __LINE__);
 
             /* draw floor, draw shadow, etc */
@@ -99,10 +101,10 @@ void DrawScene()
             // XXX should not invert every time; parallel normal matrix math path?
             modelview_normal.transpose();
             modelview_normal.invert();
-            glUniformMatrix4fv(shader->envu.modelview, 1, GL_FALSE, modelview.m_v);
-            glUniformMatrix4fv(shader->envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
+            glUniformMatrix4fv(envu.modelview, 1, GL_FALSE, modelview.m_v);
+            glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
 
-            prevshader = shader;
+            prevprogram = program;
         }
         ob->Draw(0, gDrawWireframe);
     }

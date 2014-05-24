@@ -19,7 +19,7 @@
 
 #include "drawable.h"
 
-struct PhongShader : public Shader
+struct PhongShader
 {
     typedef boost::shared_ptr<PhongShader> sptr;
 
@@ -55,6 +55,7 @@ struct PhongShader : public Shader
 
     GLuint program;
     MaterialUniforms mtlu;
+    EnvironmentUniforms envu;
 
     int positionAttrib;
     int normalAttrib; 
@@ -83,7 +84,8 @@ struct PhongShadedGeometry : public Drawable
         material(mtl)
     {}
     virtual void Draw(float objectTime, bool drawWireframe);
-    virtual Shader::sptr GetShader() { return PhongShader::GetForCurrentContext(); }
+    virtual GLuint GetProgram() { return PhongShader::GetForCurrentContext()->program; }
+    virtual EnvironmentUniforms GetEnvironmentUniforms() { return PhongShader::GetForCurrentContext()->envu; }
     virtual ~PhongShadedGeometry() {}
 };
 

@@ -70,15 +70,6 @@ struct EnvironmentUniforms
     GLuint lightColor;
 };
 
-struct Shader
-{
-    typedef boost::shared_ptr<Shader> sptr;
-    EnvironmentUniforms envu;
-    virtual void Use() = 0;
-    virtual void Setup() = 0;
-    virtual ~Shader() {}
-};
-
 struct Drawable
 {
     typedef boost::shared_ptr<Drawable> sptr;
@@ -90,7 +81,8 @@ struct Drawable
     {}
 
     virtual void Draw(float objectTime, bool drawWireframe) = 0;
-    virtual Shader::sptr GetShader() = 0;
+    virtual GLuint GetProgram() = 0;
+    virtual EnvironmentUniforms GetEnvironmentUniforms() = 0;
     virtual ~Drawable() {}
 };
 
