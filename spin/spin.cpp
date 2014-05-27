@@ -52,8 +52,6 @@ static int gButtonPressed = -1;
 // XXX Allow these to be set by options
 bool gVerbose = true;
 
-std::vector<Drawable::sptr> gObjects;
-
 float gFOV = 45;
 
 struct Light
@@ -83,10 +81,12 @@ struct DisplayInfo
 {
     mat4f modelview;
     GLuint program;
+    EnvironmentUniforms envu; // XXX Clumsy?  Really tied to program, so shouldn't be independent here
 
-    DisplayInfo(const mat4f& modelview_, GLuint program_) :
+    DisplayInfo(const mat4f& modelview_, GLuint program_, const EnvironmentUniforms& envu_) :
         modelview(modelview_),
-        program(program_)
+        program(program_),
+        envu(envu_)
     {}
 
     struct Comparator
@@ -119,6 +119,7 @@ struct Node
     Node(const box& bounds_) :
         bounds(bounds_)
     {}
+    virtual ~Node() {}
 };
 
 struct Shape : public Node
@@ -126,15 +127,16 @@ struct Shape : public Node
     typedef boost::shared_ptr<Shape> sptr;
     Drawable::sptr drawable;
     virtual void Visit(const Environment& env, DisplayList& displaylist);
-    Shape(const Drawable::sptr& drawable_) :
-        Node(drawable->bounds),
+    Shape(Drawable::sptr& drawable_) :
+        Node(drawable_->bounds),
         drawable(drawable_)
     {}
+    virtual ~Shape() {}
 };
 
 void Shape::Visit(const Environment& env, DisplayList& displaylist)
 {
-    displaylist[DisplayInfo(env.modelview, drawable->GetProgram())].push_back(drawable);
+    displaylist[DisplayInfo(env.modelview, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
 }
 
 box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children)
@@ -154,11 +156,20 @@ struct Group : public Node
     std::vector<Node::sptr> children;
 
     virtual void Visit(const Environment& env, DisplayList& displaylist);
+
     Group(const mat4f& transform_, std::vector<Node::sptr> children_) :
         Node(TransformedBounds(transform_, children_)),
         transform(transform_),
         children(children_)
     {}
+
+    Group(std::vector<Node::sptr> children_) :
+        Node(TransformedBounds(mat4f::identity, children_)),
+        transform(mat4f::identity),
+        children(children_)
+    {}
+
+    virtual ~Group() {}
 };
 
 void Group::Visit(const Environment& env, DisplayList& displaylist)
@@ -167,6 +178,16 @@ void Group::Visit(const Environment& env, DisplayList& displaylist)
     Environment env2(env.projection, newtransform, env.lights);
     for(auto it = children.begin(); it != children.end(); it++)
         (*it)->Visit(env2, displaylist);
+}
+
+Node::sptr gSceneRoot;
+
+bool ExactlyEqual(const mat4f&m1, const mat4f&m2)
+{
+    for(int i = 0; i < 16; i++)
+        if(m1[i] != m2[i])
+            return false;
+    return true;
 }
 
 void DrawScene()
@@ -190,38 +211,42 @@ void DrawScene()
 
     Light light(vec4f(.577, .577, .577, 0), vec4f(1, 1, 1, 1));
 
-    GLuint prevprogram;
-    for(auto it = gObjects.begin(); it != gObjects.end(); it++) {
-        Drawable::sptr ob(*it);
-        GLuint program = ob->GetProgram();
-        if(program != prevprogram)
-        {
-            glUseProgram(program);
-            EnvironmentUniforms envu = ob->GetEnvironmentUniforms();
-            glUniformMatrix4fv(envu.projection, 1, GL_FALSE, projection.m_v);
+    std::vector<Light> lights;
+    lights.push_back(light);
+    Environment env(projection, gSceneManip->m_matrix, lights);
+    DisplayList displaylist;
+    gSceneRoot->Visit(env, displaylist);
+
+    mat4f modelview;
+    bool modelviewInvalid = true;
+    GLuint program = 0;
+    for(auto it = displaylist.begin(); it != displaylist.end(); it++) {
+        DisplayInfo di = it->first;
+        auto drawables = it->second;
+        if(program != di.program) {
+            glUseProgram(di.program);
+            modelviewInvalid = true;
+            glUniformMatrix4fv(di.envu.projection, 1, GL_FALSE, projection.m_v);
+            glUniform4fv(di.envu.lightPosition, 1, lights[0].position.m_v);
+            glUniform4fv(di.envu.lightColor, 1, lights[0].color.m_v);
             CheckOpenGL(__FILE__, __LINE__);
-
-            glUniform4fv(envu.lightPosition, 1, light.position.m_v);
-            glUniform4fv(envu.lightColor, 1, light.color.m_v);
-            CheckOpenGL(__FILE__, __LINE__);
-
-            /* draw floor, draw shadow, etc */
-
-            // XXX same object matrix for all objects
-            mat4f modelview = gSceneManip->m_matrix;
-
-            mat4f modelview_normal = modelview;
+            program = di.program;
+        }
+        if(modelviewInvalid || !ExactlyEqual(modelview, di.modelview)) {
+            modelviewInvalid = false;
+            mat4f modelview_normal = di.modelview;
             // XXX should not invert every time
             // XXX parallel normal matrix math path?
             modelview_normal.transpose();
             modelview_normal.invert();
 
-            glUniformMatrix4fv(envu.modelview, 1, GL_FALSE, modelview.m_v);
-            glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
-
-            prevprogram = program;
+            glUniformMatrix4fv(di.envu.modelview, 1, GL_FALSE, di.modelview.m_v);
+            glUniformMatrix4fv(di.envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
+            modelview = di.modelview;
         }
-        ob->Draw(0, gDrawWireframe);
+        for(auto it2 = drawables.begin(); it2 != drawables.end(); it2++) {
+            (*it2)->Draw(0.0f, gDrawWireframe);
+        }
     }
 }
 
@@ -241,15 +266,9 @@ void TeardownGL()
 {
 }
 
-static void InitializeScene(std::vector<Drawable::sptr>& objects)
+static void InitializeScene(Node::sptr& gSceneRoot)
 {
-    box bounds;
-    for(auto it = objects.begin(); it != objects.end(); it++) {
-        Drawable::sptr ob(*it);
-
-        bounds.extend(ob->bounds);
-    }
-    gSceneManip = new manipulator(bounds, gFOV / 180.0 * 3.14159);
+    gSceneManip = new manipulator(gSceneRoot->bounds, gFOV / 180.0 * 3.14159);
 
     gCurrentManip = gSceneManip;
 }
@@ -352,18 +371,37 @@ static void DrawFrame(GLFWwindow *window)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-bool LoadScene(const std::string& filename, std::vector<Drawable::sptr>& objects)
+Node::sptr LoadScene(const std::string& filename)
 {
     int index = filename.find_last_of(".");
     std::string extension = filename.substr(index + 1);
 
+    std::vector<Drawable::sptr> objects;
+
     if(extension == "builtin") {
-        return BuiltinLoader::Load(filename, objects);
+
+        bool success = BuiltinLoader::Load(filename, objects);
+        if(!success)
+            return Node::sptr();
+
     } else if(extension == "trisrc") {
-        return TriSrcLoader::Load(filename, objects);
+
+        bool success = TriSrcLoader::Load(filename, objects);
+        if(!success)
+            return Node::sptr();
+
     } else {
-        return false;
+
+        return Node::sptr();
     }
+
+    std::vector<Node::sptr> nodes;
+    for(auto it = objects.begin(); it != objects.end(); it++) {
+        auto db = *it;
+        Shape::sptr shape(new Shape(db));
+        nodes.push_back(Shape::sptr(new Shape(*it)));
+    }
+    return Group::sptr(new Group(mat4f::identity, nodes));
 }
 
 int main(int argc, char **argv)
@@ -399,11 +437,12 @@ int main(int argc, char **argv)
     glfwMakeContextCurrent(window);
 
     InitializeGL();
-    if(!LoadScene(scene_filename, gObjects)) {
+    gSceneRoot = LoadScene(scene_filename);
+    if(!gSceneRoot) {
         fprintf(stderr, "couldn't load scene from %s\n", scene_filename);
         exit(EXIT_FAILURE);
     }
-    InitializeScene(gObjects);
+    InitializeScene(gSceneRoot);
 
     if(gVerbose) {
         printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));

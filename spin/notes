@@ -4,3 +4,7 @@ To concatenate, successively deeper matrices, pre-multiply:
 When changing the parent manip of a manip, set the frame:
     if(gCurrentManip == gSceneManip)
         gObjectManip->set_frame(gSceneManip->m_matrix);
+
+ToDo:
+    move scene prims to scene.h or something
+    create and return scene prims in loaders
