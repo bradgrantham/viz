@@ -11,13 +11,13 @@ Build requirements:
 ```
 sudo port install glfw # last tests with "glfw @3.1.0_20140504_0+docs"
 sudo port install boost # last tested with "boost @1.55.0_2+no_single+no_static+python27"
+sudo port install freeimage # last tested with "freeimage @3.16.0_1"
 sudo port install assimp
-sudo port install freeimage
 ```
 
-I'm trying to stay with C++ and GL Core 3.2 for desktop apps and GLES 2 for mobile apps.  I'm using GLFW on desktop, not sure yet about mobile.
-
-I plan to use FreeImage and ASSIMP to import models and images and save images.
+Features:
+* GL Core 3.2
+* GLFW
 
 Subdirectories:
 * library - headers and implementations
