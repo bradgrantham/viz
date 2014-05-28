@@ -6,5 +6,7 @@ When changing the parent manip of a manip, set the frame:
         gObjectManip->set_frame(gSceneManip->m_matrix);
 
 ToDo:
-    move scene prims to scene.h or something
-    create and return scene prims in loaders
+    make environment uniforms part of program somehow
+        maybe pass proj, matrix, lights to the program itself?
+    move scene types to scene.h or something
+    create and return Node::sptrs in loaders
