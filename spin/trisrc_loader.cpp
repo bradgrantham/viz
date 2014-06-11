@@ -15,6 +15,7 @@
 // 
 
 #include <string>
+#include <iostream>
 #include <map>
 #include <libgen.h>
 #include <FreeImagePlus.h>
