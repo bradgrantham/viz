@@ -59,3 +59,27 @@ void DrawList::Draw(bool drawWireframe)
 
     CheckOpenGL(__FILE__, __LINE__);
 }
+
+void Shape::Visit(const Environment& env, DisplayList& displaylist)
+{
+    displaylist[DisplayInfo(env.modelview, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
+}
+
+box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children)
+{
+    box b;
+
+    for(auto it = children.begin(); it != children.end(); it++)
+        b.extend((*it)->bounds * transform);
+
+    return b;
+}
+
+void Group::Visit(const Environment& env, DisplayList& displaylist)
+{
+    mat4f newtransform = transform * env.modelview;
+    Environment env2(env.projection, newtransform, env.lights);
+    for(auto it = children.begin(); it != children.end(); it++)
+        (*it)->Visit(env2, displaylist);
+}
+
