@@ -21,11 +21,11 @@
 
 struct PhongShader
 {
-    typedef boost::shared_ptr<PhongShader> sptr;
+    typedef std::shared_ptr<PhongShader> sptr;
 
     struct Material
     {
-        typedef boost::shared_ptr<Material> sptr;
+        typedef std::shared_ptr<Material> sptr;
 
         vec4f diffuse;
         GLuint diffuseTexture;
@@ -94,7 +94,7 @@ struct PhongShader
 
 struct PhongShadedGeometry : public Drawable
 {
-    typedef boost::shared_ptr<PhongShadedGeometry> sptr;
+    typedef std::shared_ptr<PhongShadedGeometry> sptr;
 
     PhongShader::Material::sptr material;
 

@@ -19,8 +19,7 @@
 
 #include <vector>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
@@ -38,7 +37,7 @@ static void CheckOpenGL(const char *filename, int line)
 
 struct DrawList
 {
-    typedef boost::shared_ptr<DrawList> sptr;
+    typedef std::shared_ptr<DrawList> sptr;
     struct PrimInfo {
         GLenum type;
         GLint start;
@@ -72,7 +71,7 @@ struct EnvironmentUniforms
 
 struct Drawable
 {
-    typedef boost::shared_ptr<Drawable> sptr;
+    typedef std::shared_ptr<Drawable> sptr;
     box bounds;
     DrawList::sptr drawList;
     Drawable(const box& b, DrawList::sptr dl) :

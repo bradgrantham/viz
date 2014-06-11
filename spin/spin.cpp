@@ -112,7 +112,7 @@ typedef std::map<DisplayInfo, std::vector<Drawable::sptr>, DisplayInfo::Comparat
 
 struct Node
 {
-    typedef boost::shared_ptr<Node> sptr;
+    typedef std::shared_ptr<Node> sptr;
     box bounds; // Later can cull
     virtual void Visit(const Environment& env, DisplayList& displaylist) = 0;
 
@@ -124,7 +124,7 @@ struct Node
 
 struct Shape : public Node
 {
-    typedef boost::shared_ptr<Shape> sptr;
+    typedef std::shared_ptr<Shape> sptr;
     Drawable::sptr drawable;
     virtual void Visit(const Environment& env, DisplayList& displaylist);
     Shape(Drawable::sptr& drawable_) :
@@ -151,7 +151,7 @@ box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children)
 
 struct Group : public Node 
 {
-    typedef boost::shared_ptr<Group> sptr;
+    typedef std::shared_ptr<Group> sptr;
     mat4f transform;
     std::vector<Node::sptr> children;
 
@@ -222,7 +222,7 @@ void DrawScene()
     GLuint program = 0;
     for(auto it = displaylist.begin(); it != displaylist.end(); it++) {
         DisplayInfo di = it->first;
-        auto drawables = it->second;
+        std::vector<Drawable::sptr>& drawables = it->second;
         if(program != di.program) {
             glUseProgram(di.program);
             modelviewInvalid = true;
@@ -245,7 +245,8 @@ void DrawScene()
             modelview = di.modelview;
         }
         for(auto it2 = drawables.begin(); it2 != drawables.end(); it2++) {
-            (*it2)->Draw(0.0f, gDrawWireframe);
+            Drawable::sptr d(*it2);
+            d->Draw(0.0f, gDrawWireframe);
         }
     }
 }
