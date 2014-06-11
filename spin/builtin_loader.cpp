@@ -15,6 +15,7 @@
 // 
 
 #include <vector>
+#include <string>
 #include <map>
 #include "builtin_loader.h"
 #include "phongshader.h"
