@@ -3835,7 +3835,7 @@ struct VertexComparator
     }
 };
 
-PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount)
+Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
     PhongShader::ProgramVariant& nt = shader->nontextured;
@@ -3928,26 +3928,29 @@ PhongShadedGeometry::sptr InitializePolytope(Vertex *vertices, int triangleCount
     for(int i = 0; i < triangleCount * 3; i++)
         bounds.extend(vertices[i].v);
 
-    return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
+    Drawable::sptr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
+    return Shape::sptr(new Shape(drawable));
 }
 
-bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
+std::tuple<bool, Group::sptr> Load(const std::string& filename)
 {
+    std::vector<Node::sptr> nodes;
+
     int index = filename.find_last_of(".");
     std::string model = filename.substr(0, index);
+
     if(model == "64gon") {
-        objects.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
-        return true;
+        nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
     } else if(model == "256gon") {
-        objects.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
-        return true;
+        nodes.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
     } else if(model == "both") {
-        objects.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
-        objects.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
-        return true;
+        nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
+        nodes.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
     } else {
-        return false;
+        return std::make_tuple(false, Group::sptr());
     }
+
+    return std::make_tuple(true, Group::sptr(new Group(mat4f::identity, nodes)));
 }
 
 };

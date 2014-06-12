@@ -588,7 +588,8 @@ struct mat4f
         return m;
     }
 
-    static inline mat4f rotation(float a, float x, float y, float z) {
+    static inline mat4f rotation(float a, float x, float y, float z)
+    {
 	mat4f m;
 	float c, s, t;
 

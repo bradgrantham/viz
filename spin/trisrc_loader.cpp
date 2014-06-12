@@ -152,7 +152,7 @@ struct VertexComparator
 };
 
 
-PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount, bool textured)
+Node::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount, bool textured)
 {
     PhongShader::sptr shader = PhongShader::GetForCurrentContext();
 
@@ -209,7 +209,8 @@ PhongShadedGeometry::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *ver
     for(int i = 0; i < vertexCount; i++)
         bounds.extend(vertices[i].v[0], vertices[i].v[1], vertices[i].v[2]);
 
-    return PhongShadedGeometry::sptr(new PhongShadedGeometry(drawlist, mtl, bounds));
+    Drawable::sptr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
+    return Shape::sptr(new Shape(drawable));
 }
 
 struct indexed_shape
@@ -236,7 +237,7 @@ struct indexed_shape
 
 typedef std::map<std::string, indexed_shape*> indexed_shape_dict;
 
-bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& objects)
+bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Node::sptr>& nodes)
 {
     indexed_shape_dict shapes;
     char texture_name[512];
@@ -338,7 +339,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
 
             // XXX transparency
 
-            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), false));
+            nodes.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), false));
 
         } else {
 
@@ -349,7 +350,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
 
             // XXX transparency
 
-            objects.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), true));
+            nodes.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), true));
 
         }
     }
@@ -357,7 +358,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Drawable::sptr>& obj
     return true;
 }
 
-bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
+std::tuple<bool, Node::sptr> Load(const std::string& filename)
 {
     FILE *fp = fopen(filename.c_str(), "r");
 
@@ -370,11 +371,15 @@ bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects)
     strncpy(filename_copy, filename.c_str(), filename.size() + 1);
     std::string _dirname = std::string(dirname(filename_copy));
 
-    bool success = ReadTriSrc(fp, _dirname, objects);
+    std::vector<Node::sptr> nodes;
+    bool success = ReadTriSrc(fp, _dirname, nodes);
 
     fclose(fp);
 
-    return success;
+    if(!success)
+        return std::make_tuple(success, Group::sptr());
+
+    return std::make_tuple(success, Group::sptr(new Group(mat4f::identity, nodes)));
 }
 
 };

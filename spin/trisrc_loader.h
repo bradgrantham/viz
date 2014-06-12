@@ -14,12 +14,13 @@
 // limitations under the License.
 // 
 
+#include <tuple>
 #include "drawable.h"
 
 namespace TriSrcLoader
 {
 
-bool Load(const std::string& filename, std::vector<Drawable::sptr>& scene);
+std::tuple<bool, Node::sptr> Load(const std::string& filename);
 
 };
 

@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <vector>
 #include <unistd.h>
+#include <chrono>
 
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
@@ -64,7 +65,7 @@ bool ExactlyEqual(const mat4f&m1, const mat4f&m2)
     return true;
 }
 
-void DrawScene()
+void DrawScene(double now)
 {
     float nearClip, farClip;
 
@@ -95,32 +96,33 @@ void DrawScene()
     bool modelviewInvalid = true;
     GLuint program = 0;
     for(auto it = displaylist.begin(); it != displaylist.end(); it++) {
-        DisplayInfo di = it->first;
+        DisplayInfo displayinfo = it->first;
         std::vector<Drawable::sptr>& drawables = it->second;
-        if(program != di.program) {
-            glUseProgram(di.program);
+        EnvironmentUniforms& envu = displayinfo.envu;
+        if(program != displayinfo.program) {
+            glUseProgram(displayinfo.program);
             modelviewInvalid = true;
-            glUniformMatrix4fv(di.envu.projection, 1, GL_FALSE, projection.m_v);
-            glUniform4fv(di.envu.lightPosition, 1, lights[0].position.m_v);
-            glUniform4fv(di.envu.lightColor, 1, lights[0].color.m_v);
+            glUniformMatrix4fv(envu.projection, 1, GL_FALSE, projection.m_v);
+            glUniform4fv(envu.lightPosition, 1, lights[0].position.m_v);
+            glUniform4fv(envu.lightColor, 1, lights[0].color.m_v);
             CheckOpenGL(__FILE__, __LINE__);
-            program = di.program;
+            program = displayinfo.program;
         }
-        if(modelviewInvalid || !ExactlyEqual(modelview, di.modelview)) {
+        if(modelviewInvalid || !ExactlyEqual(modelview, displayinfo.modelview)) {
             modelviewInvalid = false;
-            mat4f modelview_normal = di.modelview;
+            mat4f modelview_normal = displayinfo.modelview;
             // XXX should not invert every time
             // XXX parallel normal matrix math path?
             modelview_normal.transpose();
             modelview_normal.invert();
 
-            glUniformMatrix4fv(di.envu.modelview, 1, GL_FALSE, di.modelview.m_v);
-            glUniformMatrix4fv(di.envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
-            modelview = di.modelview;
+            glUniformMatrix4fv(envu.modelview, 1, GL_FALSE, displayinfo.modelview.m_v);
+            glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
+            modelview = displayinfo.modelview;
         }
         for(auto it2 = drawables.begin(); it2 != drawables.end(); it2++) {
             Drawable::sptr d(*it2);
-            d->Draw(0.0f, gDrawWireframe);
+            d->Draw(now, gDrawWireframe);
         }
     }
 }
@@ -233,15 +235,25 @@ static void ScrollCallback(GLFWwindow *window, double dx, double dy)
     gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
 }
 
+Group::sptr gSceneGroup;
+std::chrono::time_point<std::chrono::system_clock> gSceneStartTime;
+std::chrono::time_point<std::chrono::system_clock> gScenePreviousTime;
+
 static void DrawFrame(GLFWwindow *window)
 {
     CheckOpenGL(__FILE__, __LINE__);
+
+    std::chrono::time_point<std::chrono::system_clock> now =
+        std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = now - gSceneStartTime;
+    double elapsed = elapsed_seconds.count();
+    gScenePreviousTime = now;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     CheckOpenGL(__FILE__, __LINE__);
 
-    DrawScene();
+    DrawScene(elapsed);
 
     CheckOpenGL(__FILE__, __LINE__);
 }
@@ -251,32 +263,32 @@ Node::sptr LoadScene(const std::string& filename)
     int index = filename.find_last_of(".");
     std::string extension = filename.substr(index + 1);
 
-    std::vector<Drawable::sptr> objects;
+    Node::sptr root;
 
     if(extension == "builtin") {
 
-        bool success = BuiltinLoader::Load(filename, objects);
+        bool success;
+        std::tie(success, root) = BuiltinLoader::Load(filename);
         if(!success)
-            return Node::sptr();
+            root = Node::sptr();
 
     } else if(extension == "trisrc") {
 
-        bool success = TriSrcLoader::Load(filename, objects);
+
+        bool success;
+        std::tie(success, root) = TriSrcLoader::Load(filename);
         if(!success)
             return Node::sptr();
+    
 
     } else {
 
-        return Node::sptr();
+        root = Node::sptr();
     }
 
-    std::vector<Node::sptr> nodes;
-    for(auto it = objects.begin(); it != objects.end(); it++) {
-        auto db = *it;
-        Shape::sptr shape(new Shape(db));
-        nodes.push_back(Shape::sptr(new Shape(*it)));
-    }
-    return Group::sptr(new Group(mat4f::identity, nodes));
+    gSceneStartTime = gScenePreviousTime = std::chrono::system_clock::now();
+
+    return root;
 }
 
 int main(int argc, char **argv)

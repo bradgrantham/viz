@@ -14,12 +14,13 @@
 // limitations under the License.
 // 
 
+#include <tuple>
 #include "drawable.h"
 
 namespace BuiltinLoader
 {
 
-bool Load(const std::string& filename, std::vector<Drawable::sptr>& objects);
+std::tuple<bool, Group::sptr> Load(const std::string& filename);
 
 };
 
