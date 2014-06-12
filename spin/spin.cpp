@@ -97,9 +97,9 @@ void DrawScene(double now)
     mat4f modelview;
     bool modelviewInvalid = true;
     GLuint program = 0;
-    for(auto it = displaylist.begin(); it != displaylist.end(); it++) {
-        DisplayInfo displayinfo = it->first;
-        vector<Drawable::sptr>& drawables = it->second;
+    for(auto it : displaylist) {
+        DisplayInfo displayinfo = it.first;
+        vector<Drawable::sptr>& drawables = it.second;
         EnvironmentUniforms& envu = displayinfo.envu;
         if(program != displayinfo.program) {
             glUseProgram(displayinfo.program);
@@ -122,9 +122,8 @@ void DrawScene(double now)
             glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
             modelview = displayinfo.modelview;
         }
-        for(auto it2 = drawables.begin(); it2 != drawables.end(); it2++) {
-            Drawable::sptr d(*it2);
-            d->Draw(now, gDrawWireframe);
+        for(auto drawable : drawables) {
+            drawable->Draw(now, gDrawWireframe);
         }
     }
 }

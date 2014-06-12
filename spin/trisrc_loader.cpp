@@ -329,8 +329,8 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
 	total_tris++;
     }
 
-    for(auto itr = shapes.begin(); itr != shapes.end(); itr++) {
-        indexed_shape *sh = itr->second;
+    for(auto named_shape : shapes) {
+        indexed_shape *sh = named_shape.second;
 
         static vec4f default_ambient(.1, .1, .1, 1);
         static vec4f default_diffuse(1, 1, 1, 1);
