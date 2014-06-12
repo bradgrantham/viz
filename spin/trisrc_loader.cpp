@@ -25,6 +25,8 @@
 #define GLFW_INCLUDE_GLCOREARB
 #include <GLFW/glfw3.h>
 
+using namespace std;
+
 namespace TriSrcLoader
 {
 
@@ -44,7 +46,7 @@ void LoadCheckerBoard(int w, int h, int checkw, int checkh)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-GLuint LoadTexture(const std::string& filename)
+GLuint LoadTexture(const string& filename)
 {
     GLuint texture;
 
@@ -57,13 +59,13 @@ GLuint LoadTexture(const std::string& filename)
 
     if (!(success = image.load(filename.c_str()))) {
 
-        std::cerr << "LoadTexture: Failed to load image from " <<
-            filename << std::endl;
+        cerr << "LoadTexture: Failed to load image from " <<
+            filename << endl;
 
     } else if (!(success = image.convertTo32Bits())) {
 
-        std::cerr << "LoadTexture: Couldn't convert image to 24 bits " <<
-            filename << std::endl;
+        cerr << "LoadTexture: Couldn't convert image to 24 bits " <<
+            filename << endl;
 
     } else {
 
@@ -87,7 +89,7 @@ GLuint LoadTexture(const std::string& filename)
         }
 
         if(!handled) {
-            std::cerr << "Unhandled FIP image type: " << image.getImageType() << std::endl;
+            cerr << "Unhandled FIP image type: " << image.getImageType() << endl;
             success = false;
 
         } else {
@@ -101,7 +103,7 @@ GLuint LoadTexture(const std::string& filename)
     }
 
     if (!success) {
-        std::cerr << "GL Renderer: loading checkerboard instead." << std::endl;
+        cerr << "GL Renderer: loading checkerboard instead." << endl;
         LoadCheckerBoard(64, 64, 4, 4);
     }
 
@@ -215,19 +217,19 @@ Node::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t v
 
 struct indexed_shape
 {
-    std::string name;
+    string name;
 
     vec4f specular;
     float shininess;
 
-    std::string texture_name;
+    string texture_name;
 
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+    vector<Vertex> vertices;
+    vector<unsigned int> indices;
 
-    std::map<Vertex, unsigned int, VertexComparator> vertex_map;      // only used during load
+    map<Vertex, unsigned int, VertexComparator> vertex_map;      // only used during load
 
-    indexed_shape(const std::string& name_, const std::string& texture_name_, const vec4f& specular_, float shininess_) :
+    indexed_shape(const string& name_, const string& texture_name_, const vec4f& specular_, float shininess_) :
         name(name_),
         specular(specular_),
         shininess(shininess_),
@@ -235,9 +237,9 @@ struct indexed_shape
     {}
 };
 
-typedef std::map<std::string, indexed_shape*> indexed_shape_dict;
+typedef map<string, indexed_shape*> indexed_shape_dict;
 
-bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Node::sptr>& nodes)
+bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
 {
     indexed_shape_dict shapes;
     char texture_name[512];
@@ -287,18 +289,18 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Node::sptr>& nodes)
             specular_color[0], specular_color[1], specular_color[2],
             shininess);
 
-	std::string shape_name(shape_name_cstr);
+	string shape_name(shape_name_cstr);
 
 	auto itr = shapes.find(shape_name);
 	indexed_shape *sh;
 
 	if (itr == shapes.end()) {
 
-            std::string absoluteTextureName;
-            if (texture_name == NULL || strlen(texture_name) == 0)
+            string absoluteTextureName;
+            if (texture_name == nullptr || strlen(texture_name) == 0)
                 absoluteTextureName = "";
             else
-                absoluteTextureName = _dirname + "/" + std::string(texture_name);
+                absoluteTextureName = _dirname + "/" + string(texture_name);
 
 	    sh = new indexed_shape(tag_name, absoluteTextureName,
 	        specular_color, shininess);
@@ -358,7 +360,7 @@ bool ReadTriSrc(FILE *fp, std::string _dirname, std::vector<Node::sptr>& nodes)
     return true;
 }
 
-std::tuple<bool, Node::sptr> Load(const std::string& filename)
+tuple<bool, Node::sptr> Load(const string& filename)
 {
     FILE *fp = fopen(filename.c_str(), "r");
 
@@ -369,17 +371,17 @@ std::tuple<bool, Node::sptr> Load(const std::string& filename)
 
     char filename_copy[filename.size() + 1];
     strncpy(filename_copy, filename.c_str(), filename.size() + 1);
-    std::string _dirname = std::string(dirname(filename_copy));
+    string _dirname = string(dirname(filename_copy));
 
-    std::vector<Node::sptr> nodes;
+    vector<Node::sptr> nodes;
     bool success = ReadTriSrc(fp, _dirname, nodes);
 
     fclose(fp);
 
     if(!success)
-        return std::make_tuple(success, Group::sptr());
+        return make_tuple(success, Group::sptr());
 
-    return std::make_tuple(success, Group::sptr(new Group(mat4f::identity, nodes)));
+    return make_tuple(success, Group::sptr(new Group(mat4f::identity, nodes)));
 }
 
 };

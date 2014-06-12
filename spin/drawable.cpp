@@ -16,6 +16,8 @@
 
 #include "drawable.h"
 
+using namespace std;
+
 void DrawList::Draw(bool drawWireframe)
 {
     glBindVertexArray(vertexArray);
@@ -65,7 +67,7 @@ void Shape::Visit(const Environment& env, DisplayList& displaylist)
     displaylist[DisplayInfo(env.modelview, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
 }
 
-box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children)
+box TransformedBounds(const mat4f& transform, vector<Node::sptr> children)
 {
     box b;
 

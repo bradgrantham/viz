@@ -35,10 +35,12 @@
 #include "builtin_loader.h"
 #include "trisrc_loader.h"
 
+using namespace std;
+
 //------------------------------------------------------------------------
 
 static manipulator *gSceneManip;
-static manipulator *gCurrentManip = NULL;
+static manipulator *gCurrentManip = nullptr;
 
 static bool gDrawWireframe = false;
 static bool gStreamFrames = false;
@@ -86,7 +88,7 @@ void DrawScene(double now)
 
     Light light(vec4f(.577, .577, .577, 0), vec4f(1, 1, 1, 1));
 
-    std::vector<Light> lights;
+    vector<Light> lights;
     lights.push_back(light);
     Environment env(projection, gSceneManip->m_matrix, lights);
     DisplayList displaylist;
@@ -97,7 +99,7 @@ void DrawScene(double now)
     GLuint program = 0;
     for(auto it = displaylist.begin(); it != displaylist.end(); it++) {
         DisplayInfo displayinfo = it->first;
-        std::vector<Drawable::sptr>& drawables = it->second;
+        vector<Drawable::sptr>& drawables = it->second;
         EnvironmentUniforms& envu = displayinfo.envu;
         if(program != displayinfo.program) {
             glUseProgram(displayinfo.program);
@@ -236,16 +238,16 @@ static void ScrollCallback(GLFWwindow *window, double dx, double dy)
 }
 
 Group::sptr gSceneGroup;
-std::chrono::time_point<std::chrono::system_clock> gSceneStartTime;
-std::chrono::time_point<std::chrono::system_clock> gScenePreviousTime;
+chrono::time_point<chrono::system_clock> gSceneStartTime;
+chrono::time_point<chrono::system_clock> gScenePreviousTime;
 
 static void DrawFrame(GLFWwindow *window)
 {
     CheckOpenGL(__FILE__, __LINE__);
 
-    std::chrono::time_point<std::chrono::system_clock> now =
-        std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = now - gSceneStartTime;
+    chrono::time_point<chrono::system_clock> now =
+        chrono::system_clock::now();
+    chrono::duration<double> elapsed_seconds = now - gSceneStartTime;
     double elapsed = elapsed_seconds.count();
     gScenePreviousTime = now;
 
@@ -258,17 +260,17 @@ static void DrawFrame(GLFWwindow *window)
     CheckOpenGL(__FILE__, __LINE__);
 }
 
-Node::sptr LoadScene(const std::string& filename)
+Node::sptr LoadScene(const string& filename)
 {
     int index = filename.find_last_of(".");
-    std::string extension = filename.substr(index + 1);
+    string extension = filename.substr(index + 1);
 
     Node::sptr root;
 
     if(extension == "builtin") {
 
         bool success;
-        std::tie(success, root) = BuiltinLoader::Load(filename);
+        tie(success, root) = BuiltinLoader::Load(filename);
         if(!success)
             root = Node::sptr();
 
@@ -276,7 +278,7 @@ Node::sptr LoadScene(const std::string& filename)
 
 
         bool success;
-        std::tie(success, root) = TriSrcLoader::Load(filename);
+        tie(success, root) = TriSrcLoader::Load(filename);
         if(!success)
             return Node::sptr();
     
@@ -286,7 +288,7 @@ Node::sptr LoadScene(const std::string& filename)
         root = Node::sptr();
     }
 
-    gSceneStartTime = gScenePreviousTime = std::chrono::system_clock::now();
+    gSceneStartTime = gScenePreviousTime = chrono::system_clock::now();
 
     return root;
 }

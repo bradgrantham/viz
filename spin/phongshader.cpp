@@ -17,11 +17,13 @@
 #include <string>
 #include "phongshader.h"
 
+using namespace std;
+
 // XXX this option and the compiler utility functions below maybe should be
 // in a separate .cpp...
 bool gPrintShaderLog = true;
 
-static bool CheckShaderCompile(GLuint shader, const std::string& shader_name)
+static bool CheckShaderCompile(GLuint shader, const string& shader_name)
 {
     int status;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -70,10 +72,10 @@ static bool CheckProgramLink(GLuint program)
 }
 
 
-static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::string& fragment_shader_text)
+static GLuint GenerateProgram(const string& vertex_shader_text, const string& fragment_shader_text)
 {
     CheckOpenGL(__FILE__, __LINE__);
-    std::string spec_string;
+    string spec_string;
 
     spec_string = "#version 140\n";
 
@@ -81,8 +83,8 @@ static GLuint GenerateProgram(const std::string& vertex_shader_text, const std::
     // they have in the base shaders.
     spec_string += "#line 0\n";
 
-    std::string vertex_shader_string = spec_string + vertex_shader_text;
-    std::string fragment_shader_string = spec_string + fragment_shader_text;
+    string vertex_shader_string = spec_string + vertex_shader_text;
+    string fragment_shader_string = spec_string + fragment_shader_text;
 
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     const char *string = vertex_shader_string.c_str();
@@ -220,7 +222,7 @@ const char *PhongShader::fragmentShaderText = "\n\
 
 void SetupVariant(bool texturing, PhongShader::ProgramVariant& v)
 {
-    std::string preamble = texturing ? "#define TEXTURING\n" : "#undef TEXTURING\n";
+    string preamble = texturing ? "#define TEXTURING\n" : "#undef TEXTURING\n";
     v.program = GenerateProgram(preamble + PhongShader::vertexShaderText, preamble + PhongShader::fragmentShaderText);
     CheckOpenGL(__FILE__, __LINE__);
 

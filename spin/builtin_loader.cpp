@@ -20,6 +20,8 @@
 #include "builtin_loader.h"
 #include "phongshader.h"
 
+using namespace std;
+
 namespace BuiltinLoader
 {
 
@@ -3860,8 +3862,8 @@ Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
     if(do_indexing) {
 
         unsigned int indices[triangleCount * 3];
-        std::vector<Vertex> unique_vertices;
-        std::map<Vertex, unsigned int, VertexComparator> vertex_map;
+        vector<Vertex> unique_vertices;
+        map<Vertex, unsigned int, VertexComparator> vertex_map;
 
         for(int i = 0; i < triangleCount * 3; i++) {
             Vertex &v = vertices[i];
@@ -3932,12 +3934,12 @@ Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
     return Shape::sptr(new Shape(drawable));
 }
 
-std::tuple<bool, Group::sptr> Load(const std::string& filename)
+tuple<bool, Group::sptr> Load(const string& filename)
 {
-    std::vector<Node::sptr> nodes;
+    vector<Node::sptr> nodes;
 
     int index = filename.find_last_of(".");
-    std::string model = filename.substr(0, index);
+    string model = filename.substr(0, index);
 
     if(model == "64gon") {
         nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
@@ -3947,10 +3949,10 @@ std::tuple<bool, Group::sptr> Load(const std::string& filename)
         nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
         nodes.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
     } else {
-        return std::make_tuple(false, Group::sptr());
+        return make_tuple(false, Group::sptr());
     }
 
-    return std::make_tuple(true, Group::sptr(new Group(mat4f::identity, nodes)));
+    return make_tuple(true, Group::sptr(new Group(mat4f::identity, nodes)));
 }
 
 };
