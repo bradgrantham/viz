@@ -57,6 +57,7 @@ bool gVerbose = false;
 float gFOV = 45;
 
 NodePtr gSceneRoot;
+ControllerPtr gSceneController;
 
 bool ExactlyEqual(const mat4f&m1, const mat4f&m2)
 {
@@ -66,7 +67,7 @@ bool ExactlyEqual(const mat4f&m1, const mat4f&m2)
     return true;
 }
 
-void DrawScene(double now)
+void DrawScene(float now)
 {
     float nearClip, farClip;
 
@@ -245,8 +246,10 @@ static void DrawFrame(GLFWwindow *window)
 
     chrono::time_point<chrono::system_clock> now =
         chrono::system_clock::now();
-    chrono::duration<double> elapsed_seconds = now - gSceneStartTime;
-    double elapsed = elapsed_seconds.count();
+    chrono::duration<float> elapsed_seconds = now - gSceneStartTime;
+    float elapsed = elapsed_seconds.count();
+    if(gSceneController)
+        gSceneController->Update(elapsed);
     gScenePreviousTime = now;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -291,8 +294,9 @@ int main(int argc, char **argv)
     glfwMakeContextCurrent(window);
 
     InitializeGL();
-    gSceneRoot = LoadScene(scene_filename);
-    if(!gSceneRoot) {
+    bool success;
+    tie(success, gSceneRoot, gSceneController) = LoadScene(scene_filename);
+    if(!success) {
         fprintf(stderr, "couldn't load scene from %s\n", scene_filename);
         exit(EXIT_FAILURE);
     }

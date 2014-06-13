@@ -15,12 +15,12 @@
 // 
 
 #include <tuple>
-#include "drawable.h"
+#include "loader.h"
 
 namespace TriSrcLoader
 {
 
-std::tuple<bool, NodePtr> Load(const std::string& filename);
+std::tuple<bool, NodePtr, ControllerPtr> Load(const std::string& filename);
 
 };
 
