@@ -154,14 +154,14 @@ struct VertexComparator
 };
 
 
-Node::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount, bool textured)
+NodePtr MakeShape(PhongShader::MaterialPtr mtl, Vertex *vertices, size_t vertexCount, unsigned int *indices, int indexCount, bool textured)
 {
-    PhongShader::sptr shader = PhongShader::GetForCurrentContext();
+    PhongShaderPtr shader = PhongShader::GetForCurrentContext();
 
     PhongShader::ProgramVariant& vt = textured ? shader->textured : shader->nontextured;
     glUseProgram(vt.program);
 
-    DrawList::sptr drawlist(new DrawList);
+    DrawListPtr drawlist(new DrawList);
     glGenVertexArrays(1, &drawlist->vertexArray);
     glBindVertexArray(drawlist->vertexArray);
     drawlist->indexed = false;
@@ -211,8 +211,8 @@ Node::sptr MakeShape(PhongShader::Material::sptr mtl, Vertex *vertices, size_t v
     for(int i = 0; i < vertexCount; i++)
         bounds.extend(vertices[i].v[0], vertices[i].v[1], vertices[i].v[2]);
 
-    Drawable::sptr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
-    return Shape::sptr(new Shape(drawable));
+    DrawablePtr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
+    return ShapePtr(new Shape(drawable));
 }
 
 struct indexed_shape
@@ -239,7 +239,7 @@ struct indexed_shape
 
 typedef map<string, indexed_shape*> indexed_shape_dict;
 
-bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
+bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
 {
     indexed_shape_dict shapes;
     char texture_name[512];
@@ -337,7 +337,7 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
 
         if(sh->texture_name.empty()) {
 
-            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
+            PhongShader::MaterialPtr mtl(new PhongShader::Material(default_diffuse, default_ambient, sh->specular, sh->shininess));
 
             // XXX transparency
 
@@ -348,7 +348,7 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
             GLuint texture = LoadTexture(sh->texture_name);
             printf("texture is %u\n", texture);
             
-            PhongShader::Material::sptr mtl(new PhongShader::Material(default_diffuse, texture, default_ambient, sh->specular, sh->shininess));
+            PhongShader::MaterialPtr mtl(new PhongShader::Material(default_diffuse, texture, default_ambient, sh->specular, sh->shininess));
 
             // XXX transparency
 
@@ -360,7 +360,7 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<Node::sptr>& nodes)
     return true;
 }
 
-tuple<bool, Node::sptr> Load(const string& filename)
+tuple<bool, NodePtr> Load(const string& filename)
 {
     FILE *fp = fopen(filename.c_str(), "r");
 
@@ -373,15 +373,15 @@ tuple<bool, Node::sptr> Load(const string& filename)
     strncpy(filename_copy, filename.c_str(), filename.size() + 1);
     string _dirname = string(dirname(filename_copy));
 
-    vector<Node::sptr> nodes;
+    vector<NodePtr> nodes;
     bool success = ReadTriSrc(fp, _dirname, nodes);
 
     fclose(fp);
 
     if(!success)
-        return make_tuple(success, Group::sptr());
+        return make_tuple(success, GroupPtr());
 
-    return make_tuple(success, Group::sptr(new Group(mat4f::identity, nodes)));
+    return make_tuple(success, GroupPtr(new Group(mat4f::identity, nodes)));
 }
 
 };

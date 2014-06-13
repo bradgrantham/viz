@@ -1,3 +1,41 @@
+Still to be done in order to feel not embarrassed
+    load ASSIMP
+    skinning
+    time modulation in the scene graph: scale, phase
+    lua control of scene
+        transforms
+    normal mapping
+    pull lights from scene graph
+
+3 complex visualization illumination features to implement
+    multiple lights (many more than can be put in uniforms?), including spotlights
+        multiple passes *or* gather most important lights and apply post-process
+        demo content:
+            fireflies in a forest
+                many fireflies all cast light on trees and ground
+                cars driving on winding road have spotlights
+                fireflies and car headlights cast shadows
+    shadows
+        initially shadowmaps
+            directional and spotlights use one 2D shadow depth map
+            point lights use 6 2D shadow depth maps
+                100 point lights * 256 * 256 * 6 * 32-bit depth = 157MB... hmf
+    ambient occlusion (requires skybox?)
+        modulate sampling by brightness in skybox somehow as later refinement
+        demo content:
+            same forest content, no fireflies nor headlights
+
+Most valuable from career development point of view
+    * clean code
+    * performance
+    * understanding G-buffer
+        * implement lights and/or AO using pixel storage?
+
+Additional complex viz for notes completeness
+    per-object reflection maps
+        need "object" abstraction to represent one cubemap
+    planar reflectors
+
 To concatenate, successively deeper matrices, pre-multiply:
     mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
 
@@ -6,7 +44,4 @@ When changing the parent manip of a manip, set the frame:
         gObjectManip->set_frame(gSceneManip->m_matrix);
 
 ToDo:
-    make environment uniforms part of program somehow
-        maybe pass proj, matrix, lights to the program itself?
     move scene types to scene.h or something
-    create and return Node::sptrs in loaders

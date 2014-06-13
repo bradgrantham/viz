@@ -67,7 +67,7 @@ void Shape::Visit(const Environment& env, DisplayList& displaylist)
     displaylist[DisplayInfo(env.modelview, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
 }
 
-box TransformedBounds(const mat4f& transform, vector<Node::sptr> children)
+box TransformedBounds(const mat4f& transform, vector<NodePtr> children)
 {
     box b;
 
@@ -85,3 +85,11 @@ void Group::Visit(const Environment& env, DisplayList& displaylist)
         child->Visit(env2, displaylist);
 }
 
+void CheckOpenGL(const char *filename, int line)
+{
+    int glerr;
+
+    if((glerr = glGetError()) != GL_NO_ERROR) {
+        printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
+    }
+}

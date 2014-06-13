@@ -19,13 +19,13 @@
 
 #include "drawable.h"
 
+struct PhongShader;
+typedef std::shared_ptr<PhongShader> PhongShaderPtr;
 struct PhongShader
 {
-    typedef std::shared_ptr<PhongShader> sptr;
 
     struct Material
     {
-        typedef std::shared_ptr<Material> sptr;
 
         vec4f diffuse;
         GLuint diffuseTexture;
@@ -59,6 +59,7 @@ struct PhongShader
             shininess(0)
         { }
     };
+    typedef std::shared_ptr<Material> MaterialPtr;
 
     struct MaterialUniforms
     {
@@ -79,7 +80,7 @@ struct PhongShader
         int colorAttrib; 
         int texcoordAttrib;  // unused in nontextured
 
-        void ApplyMaterial(Material::sptr mtl);
+        void ApplyMaterial(MaterialPtr mtl);
     } nontextured, textured;
 
     static const char *vertexShaderText;
@@ -88,17 +89,16 @@ struct PhongShader
     virtual void Setup();
     virtual ~PhongShader() {}
 
-    static PhongShader::sptr GetForCurrentContext();
-    static PhongShader::sptr gShader;
+    static PhongShaderPtr GetForCurrentContext();
+    static PhongShaderPtr gShader;
 };
 
 struct PhongShadedGeometry : public Drawable
 {
-    typedef std::shared_ptr<PhongShadedGeometry> sptr;
 
-    PhongShader::Material::sptr material;
+    PhongShader::MaterialPtr material;
 
-    PhongShadedGeometry(DrawList::sptr dl, PhongShader::Material::sptr mtl, const box& b) :
+    PhongShadedGeometry(DrawListPtr dl, PhongShader::MaterialPtr mtl, const box& b) :
         Drawable(b, dl),
         material(mtl)
     {}
@@ -107,5 +107,6 @@ struct PhongShadedGeometry : public Drawable
     virtual EnvironmentUniforms GetEnvironmentUniforms();
     virtual ~PhongShadedGeometry() {}
 };
+typedef std::shared_ptr<PhongShadedGeometry> PhongShadedGeometryPtr;
 
 #endif /* _PHONGSHADER_H_ */

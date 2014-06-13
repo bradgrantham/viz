@@ -32,8 +32,7 @@
 #include "manipulator.h"
 
 #include "drawable.h"
-#include "builtin_loader.h"
-#include "trisrc_loader.h"
+#include "loader.h"
 
 using namespace std;
 
@@ -57,7 +56,7 @@ bool gVerbose = false;
 
 float gFOV = 45;
 
-Node::sptr gSceneRoot;
+NodePtr gSceneRoot;
 
 bool ExactlyEqual(const mat4f&m1, const mat4f&m2)
 {
@@ -99,7 +98,7 @@ void DrawScene(double now)
     GLuint program = 0;
     for(auto it : displaylist) {
         DisplayInfo displayinfo = it.first;
-        vector<Drawable::sptr>& drawables = it.second;
+        vector<DrawablePtr>& drawables = it.second;
         EnvironmentUniforms& envu = displayinfo.envu;
         if(program != displayinfo.program) {
             glUseProgram(displayinfo.program);
@@ -144,7 +143,7 @@ void TeardownGL()
 {
 }
 
-static void InitializeScene(Node::sptr& gSceneRoot)
+static void InitializeScene(NodePtr& gSceneRoot)
 {
     gSceneManip = new manipulator(gSceneRoot->bounds, gFOV / 180.0 * 3.14159);
 
@@ -236,7 +235,7 @@ static void ScrollCallback(GLFWwindow *window, double dx, double dy)
     gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
 }
 
-Group::sptr gSceneGroup;
+GroupPtr gSceneGroup;
 chrono::time_point<chrono::system_clock> gSceneStartTime;
 chrono::time_point<chrono::system_clock> gScenePreviousTime;
 
@@ -257,39 +256,6 @@ static void DrawFrame(GLFWwindow *window)
     DrawScene(elapsed);
 
     CheckOpenGL(__FILE__, __LINE__);
-}
-
-Node::sptr LoadScene(const string& filename)
-{
-    int index = filename.find_last_of(".");
-    string extension = filename.substr(index + 1);
-
-    Node::sptr root;
-
-    if(extension == "builtin") {
-
-        bool success;
-        tie(success, root) = BuiltinLoader::Load(filename);
-        if(!success)
-            root = Node::sptr();
-
-    } else if(extension == "trisrc") {
-
-
-        bool success;
-        tie(success, root) = TriSrcLoader::Load(filename);
-        if(!success)
-            return Node::sptr();
-    
-
-    } else {
-
-        root = Node::sptr();
-    }
-
-    gSceneStartTime = gScenePreviousTime = chrono::system_clock::now();
-
-    return root;
 }
 
 int main(int argc, char **argv)
@@ -343,6 +309,8 @@ int main(int argc, char **argv)
     glfwSetScrollCallback(window, ScrollCallback);
     glfwSetFramebufferSizeCallback(window, ResizeCallback);
     glfwSetWindowRefreshCallback(window, DrawFrame);
+
+    gSceneStartTime = gScenePreviousTime = chrono::system_clock::now();
 
     while (!glfwWindowShouldClose(window)) {
 

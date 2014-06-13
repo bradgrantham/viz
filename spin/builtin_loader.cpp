@@ -3837,9 +3837,9 @@ struct VertexComparator
     }
 };
 
-Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
+NodePtr InitializePolytope(Vertex *vertices, int triangleCount)
 {
-    PhongShader::sptr shader = PhongShader::GetForCurrentContext();
+    PhongShaderPtr shader = PhongShader::GetForCurrentContext();
     PhongShader::ProgramVariant& nt = shader->nontextured;
     glUseProgram(nt.program);
 
@@ -3847,9 +3847,9 @@ Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
     static vec4f ambient(.16, .14, .12, 1);
     static vec4f specular(1, 1, 1, 1);
     static float shininess = 50;
-    PhongShader::Material::sptr mtl(new PhongShader::Material(diffuse, ambient, specular, shininess));
+    PhongShader::MaterialPtr mtl(new PhongShader::Material(diffuse, ambient, specular, shininess));
 
-    DrawList::sptr drawlist(new DrawList);
+    DrawListPtr drawlist(new DrawList);
     glGenVertexArrays(1, &drawlist->vertexArray);
     glBindVertexArray(drawlist->vertexArray);
     drawlist->prims.push_back(DrawList::PrimInfo(GL_TRIANGLES, 0, triangleCount * 3));
@@ -3930,13 +3930,13 @@ Node::sptr InitializePolytope(Vertex *vertices, int triangleCount)
     for(int i = 0; i < triangleCount * 3; i++)
         bounds.extend(vertices[i].v);
 
-    Drawable::sptr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
-    return Shape::sptr(new Shape(drawable));
+    DrawablePtr drawable(new PhongShadedGeometry(drawlist, mtl, bounds));
+    return ShapePtr(new Shape(drawable));
 }
 
-tuple<bool, Group::sptr> Load(const string& filename)
+tuple<bool, GroupPtr> Load(const string& filename)
 {
-    vector<Node::sptr> nodes;
+    vector<NodePtr> nodes;
 
     int index = filename.find_last_of(".");
     string model = filename.substr(0, index);
@@ -3949,10 +3949,10 @@ tuple<bool, Group::sptr> Load(const string& filename)
         nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
         nodes.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
     } else {
-        return make_tuple(false, Group::sptr());
+        return make_tuple(false, GroupPtr());
     }
 
-    return make_tuple(true, Group::sptr(new Group(mat4f::identity, nodes)));
+    return make_tuple(true, GroupPtr(new Group(mat4f::identity, nodes)));
 }
 
 };

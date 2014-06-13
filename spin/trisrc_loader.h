@@ -20,7 +20,7 @@
 namespace TriSrcLoader
 {
 
-std::tuple<bool, Node::sptr> Load(const std::string& filename);
+std::tuple<bool, NodePtr> Load(const std::string& filename);
 
 };
 

@@ -26,18 +26,10 @@
 
 #include "geometry.h"
 
-static void CheckOpenGL(const char *filename, int line)
-{
-    int glerr;
-
-    if((glerr = glGetError()) != GL_NO_ERROR) {
-        printf("GL Error: %04X at %s:%d\n", glerr, filename, line);
-    }
-}
+void CheckOpenGL(const char *filename, int line);
 
 struct DrawList
 {
-    typedef std::shared_ptr<DrawList> sptr;
     struct PrimInfo {
         GLenum type;
         GLint start;
@@ -58,6 +50,7 @@ struct DrawList
         indexed(false)
     {}
 };
+typedef std::shared_ptr<DrawList> DrawListPtr;
 
 struct EnvironmentUniforms
 {
@@ -71,10 +64,9 @@ struct EnvironmentUniforms
 
 struct Drawable
 {
-    typedef std::shared_ptr<Drawable> sptr;
     box bounds;
-    DrawList::sptr drawList;
-    Drawable(const box& b, DrawList::sptr dl) :
+    DrawListPtr drawList;
+    Drawable(const box& b, DrawListPtr dl) :
         bounds(b),
         drawList(dl)
     {}
@@ -84,6 +76,7 @@ struct Drawable
     virtual EnvironmentUniforms GetEnvironmentUniforms() = 0;
     virtual ~Drawable() {}
 };
+typedef std::shared_ptr<Drawable> DrawablePtr;
 
 struct Light
 {
@@ -139,11 +132,10 @@ struct DisplayInfo
     };
 
 };
-typedef std::map<DisplayInfo, std::vector<Drawable::sptr>, DisplayInfo::Comparator> DisplayList;
+typedef std::map<DisplayInfo, std::vector<DrawablePtr>, DisplayInfo::Comparator> DisplayList;
 
 struct Node
 {
-    typedef std::shared_ptr<Node> sptr;
     box bounds; // Later can cull
     virtual void Visit(const Environment& env, DisplayList& displaylist) = 0;
 
@@ -152,36 +144,36 @@ struct Node
     {}
     virtual ~Node() {}
 };
+typedef std::shared_ptr<Node> NodePtr;
 
 struct Shape : public Node
 {
-    typedef std::shared_ptr<Shape> sptr;
-    Drawable::sptr drawable;
+    DrawablePtr drawable;
     virtual void Visit(const Environment& env, DisplayList& displaylist);
-    Shape(Drawable::sptr& drawable_) :
+    Shape(DrawablePtr& drawable_) :
         Node(drawable_->bounds),
         drawable(drawable_)
     {}
     virtual ~Shape() {}
 };
+typedef std::shared_ptr<Shape> ShapePtr;
 
-box TransformedBounds(const mat4f& transform, std::vector<Node::sptr> children);
+box TransformedBounds(const mat4f& transform, std::vector<NodePtr> children);
 
 struct Group : public Node 
 {
-    typedef std::shared_ptr<Group> sptr;
     mat4f transform;
-    std::vector<Node::sptr> children;
+    std::vector<NodePtr> children;
 
     virtual void Visit(const Environment& env, DisplayList& displaylist);
 
-    Group(const mat4f& transform_, std::vector<Node::sptr> children_) :
+    Group(const mat4f& transform_, std::vector<NodePtr> children_) :
         Node(TransformedBounds(transform_, children_)),
         transform(transform_),
         children(children_)
     {}
 
-    Group(std::vector<Node::sptr> children_) :
+    Group(std::vector<NodePtr> children_) :
         Node(TransformedBounds(mat4f::identity, children_)),
         transform(mat4f::identity),
         children(children_)
@@ -189,6 +181,7 @@ struct Group : public Node
 
     virtual ~Group() {}
 };
+typedef std::shared_ptr<Group> GroupPtr;
 
 
 #endif /* _DRAWABLE_H_ */

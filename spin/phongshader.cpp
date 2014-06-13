@@ -113,7 +113,7 @@ static GLuint GenerateProgram(const string& vertex_shader_text, const string& fr
     return program;
 }
 
-void PhongShader::ProgramVariant::ApplyMaterial(PhongShader::Material::sptr mtl)
+void PhongShader::ProgramVariant::ApplyMaterial(PhongShader::MaterialPtr mtl)
 {
     glUseProgram(program); // can switch to tex here
     glUniform4fv(mtlu.ambient, 1, mtl->ambient);
@@ -256,13 +256,13 @@ void PhongShader::Setup()
     SetupVariant(true, textured);
 }
 
-PhongShader::sptr PhongShader::gShader;
+PhongShaderPtr PhongShader::gShader;
 
-PhongShader::sptr PhongShader::GetForCurrentContext()
+PhongShaderPtr PhongShader::GetForCurrentContext()
 {
     // XXX only handle one context that doesn't change for now
     if(!gShader) {
-        gShader = PhongShader::sptr(new PhongShader());
+        gShader = PhongShaderPtr(new PhongShader());
         gShader->Setup();
     }
     return gShader;

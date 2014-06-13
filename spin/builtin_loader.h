@@ -20,7 +20,7 @@
 namespace BuiltinLoader
 {
 
-std::tuple<bool, Group::sptr> Load(const std::string& filename);
+std::tuple<bool, GroupPtr> Load(const std::string& filename);
 
 };
 
