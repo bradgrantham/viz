@@ -360,22 +360,7 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
     return true;
 }
 
-struct SpinController : public Controller
-{
-    GroupPtr g;
-    virtual void Update(float time)
-    {
-        g->transform = mat4f::rotation(time, 0, 0, 1);
-    }
-    void setRoot(GroupPtr g_)
-    {
-        g = g_;
-    }
-    virtual ~SpinController() {}
-};
-typedef std::shared_ptr<SpinController> SpinControllerPtr;
-
-tuple<bool, NodePtr, ControllerPtr> Load(const string& filename)
+tuple<bool, NodePtr> Load(const string& filename)
 {
     FILE *fp = fopen(filename.c_str(), "r");
 
@@ -394,14 +379,11 @@ tuple<bool, NodePtr, ControllerPtr> Load(const string& filename)
     fclose(fp);
 
     if(!success)
-        return make_tuple(success, GroupPtr(), ControllerPtr());
+        return make_tuple(success, GroupPtr());
 
     GroupPtr group(new Group(mat4f::identity, nodes));
 
-    SpinControllerPtr spinner(new SpinController());
-    spinner->setRoot(group);
-
-    return make_tuple(success, group, spinner);
+    return make_tuple(success, group);
 }
 
 };

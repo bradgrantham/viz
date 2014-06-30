@@ -3934,7 +3934,7 @@ NodePtr InitializePolytope(Vertex *vertices, int triangleCount)
     return ShapePtr(new Shape(drawable));
 }
 
-tuple<bool, GroupPtr, ControllerPtr> Load(const string& filename)
+tuple<bool, GroupPtr> Load(const string& filename)
 {
     vector<NodePtr> nodes;
 
@@ -3949,10 +3949,10 @@ tuple<bool, GroupPtr, ControllerPtr> Load(const string& filename)
         nodes.push_back(InitializePolytope(g64GonVertices, g64GonTriangleCount));
         nodes.push_back(InitializePolytope(g256GonVertices, g256GonTriangleCount));
     } else {
-        return make_tuple(false, GroupPtr(), ControllerPtr());
+        return make_tuple(false, GroupPtr());
     }
 
-    return make_tuple(true, GroupPtr(new Group(mat4f::identity, nodes)), ControllerPtr());
+    return make_tuple(true, GroupPtr(new Group(mat4f::identity, nodes)));
 }
 
 };

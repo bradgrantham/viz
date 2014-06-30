@@ -1,11 +1,33 @@
-Still to be done in order to feel not embarrassed
-    load ASSIMP
-    skinning
-    time modulation in the scene graph: scale, phase
-    lua control of scene
-        transforms
-    normal mapping
+To do
+    Controller needs UI/interaction callbacks
+        Functionality
+            update(float time)
+            same as current GLFW callbacks for now
+        Move UI callbacks into DefaultController
+        Controller will then typically have to make a root transform
+          that it updates on click&drag, etc
+    LoadModel (no Controller) versus LoadScene (returns Controller)
+        separate out LoadScene
+            knows how to call scene loaders
+	    and if no scene loader, how to call model loader and
+	      create default Controller and default root
+        LoadModel knows only how to return NodePtrs
     pull lights from scene graph
+        Light object in scene graph
+        accumulate during Visit?
+            Yeah - Visit collects things to draw and relevant info, it doesn't draw
+    templated trisrc, r9, assimp loaders
+    time modulation nodes in the scene graph: scale, phase
+    Move out all scene goop so other apps can use them??
+    lua control of scene
+        events (put trackball into the controller, have default controller)
+        transforms
+    normal/bump mapping
+    skinning
+
+2 variants of gbuffer
+    * pixel local storage gbuffer
+    * multiple render target gbuffer
 
 3 complex visualization illumination features to implement
     multiple lights (many more than can be put in uniforms?), including spotlights
@@ -20,6 +42,7 @@ Still to be done in order to feel not embarrassed
             directional and spotlights use one 2D shadow depth map
             point lights use 6 2D shadow depth maps
                 100 point lights * 256 * 256 * 6 * 32-bit depth = 157MB... hmf
+            do RT in shader using PLS/gbuffer?
     ambient occlusion (requires skybox?)
         modulate sampling by brightness in skybox somehow as later refinement
         demo content:
@@ -28,20 +51,22 @@ Still to be done in order to feel not embarrassed
 Most valuable from career development point of view
     * clean code
     * performance
-    * understanding G-buffer
-        * implement lights and/or AO using pixel storage?
+    * understanding G-buffer through PLS
+        store normal, color, materialid (shininess from texture) in gbuffer
+        second / later pass shades pixel
+        probably need to render at 2x if RT is below a certain PPI
 
 Additional complex viz for notes completeness
     per-object reflection maps
         need "object" abstraction to represent one cubemap
     planar reflectors
+    refraction???
+    volume effects
 
-To concatenate, successively deeper matrices, pre-multiply:
+To concatenate successively deeper matrices, pre-multiply:
     mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
 
 When changing the parent manip of a manip, set the frame:
     if(gCurrentManip == gSceneManip)
         gObjectManip->set_frame(gSceneManip->m_matrix);
 
-ToDo:
-    move scene types to scene.h or something
