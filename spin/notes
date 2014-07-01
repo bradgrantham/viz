@@ -1,17 +1,8 @@
 To do
-    Controller needs UI/interaction callbacks
-        Functionality
-            update(float time)
-            same as current GLFW callbacks for now
-        Move UI callbacks into DefaultController
-        Controller will then typically have to make a root transform
-          that it updates on click&drag, etc
-    LoadModel (no Controller) versus LoadScene (returns Controller)
-        separate out LoadScene
-            knows how to call scene loaders
-	    and if no scene loader, how to call model loader and
-	      create default Controller and default root
-        LoadModel knows only how to return NodePtrs
+    Do projection in Environment as well
+        move fov and projection matrix to controller or nodes in graph
+        nearclip and farclip
+    In DefaultController, manage manip and marix against root
     pull lights from scene graph
         Light object in scene graph
         accumulate during Visit?

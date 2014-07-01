@@ -21,7 +21,7 @@ OPT=-g
 CXXFLAGS=$(OPT) -Wall -I/opt/local/include --std=c++11
 LDFLAGS=-L/opt/local/lib -lglfw -lfreeimageplus -framework OpenGL -framework Cocoa -framework IOkit
 
-loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h
+loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h loader.h
 spin.o: drawable.h geometry.h manipulator.h phongshader.h vectormath.h
 vectormath.o: vectormath.h
 manipulator.o: geometry.h manipulator.h vectormath.h

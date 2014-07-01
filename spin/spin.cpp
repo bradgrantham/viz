@@ -38,9 +38,6 @@ using namespace std;
 
 //------------------------------------------------------------------------
 
-static manipulator *gSceneManip;
-static manipulator *gCurrentManip = nullptr;
-
 static bool gDrawWireframe = false;
 static bool gStreamFrames = false;
 
@@ -49,12 +46,12 @@ static int gWindowHeight;
 
 static double gMotionReported = false;
 static double gOldMouseX, gOldMouseY;
-static int gButtonPressed = -1;
 
 // XXX Allow these to be set by options
 bool gVerbose = false;
 
-float gFOV = 45;
+// XXX Controller needs ability to set camera projection...
+const float gFOV = 45; // XXX XXX also gFOV in DefaultController...
 
 NodePtr gSceneRoot;
 ControllerPtr gSceneController;
@@ -72,12 +69,12 @@ void DrawScene(float now)
     float nearClip, farClip;
 
     /* XXX - need to create new box from all subordinate boxes */
-    nearClip = - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
-    farClip = - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
-    if(nearClip < 0.1 * gSceneManip->m_reference_size)
-	nearClip = 0.1 * gSceneManip->m_reference_size;
-    if(farClip < 0.2 * gSceneManip->m_reference_size)
-	nearClip = 0.2 * gSceneManip->m_reference_size;
+    nearClip = .1 ; // XXX - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
+    farClip = 1000 ; // XXX - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
+    // if(nearClip < 0.1 * gSceneManip->m_reference_size)
+	// nearClip = 0.1 * gSceneManip->m_reference_size;
+    // if(farClip < 0.2 * gSceneManip->m_reference_size)
+	// nearClip = 0.2 * gSceneManip->m_reference_size;
 
     float frustumLeft, frustumRight, frustumBottom, frustumTop;
     frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
@@ -90,7 +87,7 @@ void DrawScene(float now)
 
     vector<Light> lights;
     lights.push_back(light);
-    Environment env(projection, gSceneManip->m_matrix, lights);
+    Environment env(projection, mat4f::identity, lights);
     DisplayList displaylist;
     gSceneRoot->Visit(env, displaylist);
 
@@ -146,9 +143,6 @@ void TeardownGL()
 
 static void InitializeScene(NodePtr& gSceneRoot)
 {
-    gSceneManip = new manipulator(gSceneRoot->bounds, gFOV / 180.0 * 3.14159);
-
-    gCurrentManip = gSceneManip;
 }
 
 static void ErrorCallback(int error, const char* description)
@@ -164,24 +158,10 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
                 gDrawWireframe = !gDrawWireframe;
                 break;
 
-            case 'R':
-                gCurrentManip->m_mode = manipulator::ROTATE;
-                break;
-
-            case 'O':
-                gCurrentManip->m_mode = manipulator::ROLL;
-                break;
-
-            case 'X':
-                gCurrentManip->m_mode = manipulator::SCROLL;
-                break;
-
-            case 'Z':
-                gCurrentManip->m_mode = manipulator::DOLLY;
-                break;
-
-            case 'Q': case '\033':
-                glfwSetWindowShouldClose(window, GL_TRUE);
+            default:
+                bool quit = gSceneController->Key(key, scancode, action, mods);
+                if(quit)
+                    glfwSetWindowShouldClose(window, GL_TRUE);
                 break;
         }
     }
@@ -191,20 +171,19 @@ static void ResizeCallback(GLFWwindow *window, int x, int y)
 {
     glfwGetFramebufferSize(window, &gWindowWidth, &gWindowHeight);
     glViewport(0, 0, gWindowWidth, gWindowHeight);
+    gSceneController->Resize(gWindowWidth, gWindowHeight);
 }
 
 static void ButtonCallback(GLFWwindow *window, int b, int action, int mods)
 {
     double x, y;
     glfwGetCursorPos(window, &x, &y);
+    gOldMouseX = x;
+    gOldMouseY = y;
 
-    if(b == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
-        gButtonPressed = 1;
-	gOldMouseX = x;
-	gOldMouseY = y;
-    } else {
-        gButtonPressed = -1;
-    }
+    bool quit = gSceneController->Button(b, action, mods, x, y);
+    if(quit)
+        glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
 static void MotionCallback(GLFWwindow *window, double x, double y)
@@ -226,14 +205,16 @@ static void MotionCallback(GLFWwindow *window, double x, double y)
     gOldMouseX = x;
     gOldMouseY = y;
 
-    if(gButtonPressed == 1) {
-        gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
-    }
+    bool quit = gSceneController->Motion(dx, dy);
+    if(quit)
+        glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
 static void ScrollCallback(GLFWwindow *window, double dx, double dy)
 {
-    gCurrentManip->move(dx / gWindowWidth, dy / gWindowHeight);
+    bool quit = gSceneController->Scroll(dx, dy);
+    if(quit)
+        glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
 GroupPtr gSceneGroup;
@@ -248,8 +229,7 @@ static void DrawFrame(GLFWwindow *window)
         chrono::system_clock::now();
     chrono::duration<float> elapsed_seconds = now - gSceneStartTime;
     float elapsed = elapsed_seconds.count();
-    if(gSceneController)
-        gSceneController->Update(elapsed);
+    gSceneController->Update(elapsed);
     gScenePreviousTime = now;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -306,6 +286,8 @@ int main(int argc, char **argv)
         printf("GL_RENDERER: %s\n", glGetString(GL_RENDERER));
         printf("GL_VERSION: %s\n", glGetString(GL_VERSION));
     }
+
+    gSceneController->Resize(gWindowWidth, gWindowHeight);
 
     glfwSetKeyCallback(window, KeyCallback);
     glfwSetMouseButtonCallback(window, ButtonCallback);
