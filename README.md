@@ -15,10 +15,6 @@ sudo port install freeimage # last tested with "freeimage @3.16.0_1"
 sudo port install assimp
 ```
 
-Features:
-* GL Core 3.2
-* GLFW
-
 Subdirectories:
 * library - headers and implementations
 * simple_spin - hardcoded vertex array polytope with trackball
@@ -28,7 +24,7 @@ Subdirectories:
   * Perhaps suitable for cloning to make simple geometry samples or tests
 * spin - more flexible scene display code
   * Encapsulated program and geometry objects
-  * Simple per-pixel lighting, target is more complex shading including texturing
+  * Simple per-pixel lighting including diffuse color texturing
   * Meant to be standalone viewer for models
   * Some example "spin" command lines
 ```
