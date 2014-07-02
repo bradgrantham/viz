@@ -1,3 +1,13 @@
+Material?
+    optional global or vertex diffuse
+    optional texture diffuse
+    optional global specular and shininess
+    optional texture shininess
+    optional global specular
+    Need to do fresnel - ...?
+    optional bump map / displacement map
+        -> best practice is tangent space?
+
 To do
     Do projection in Environment as well
         move fov and projection matrix to controller or nodes in graph
@@ -7,7 +17,7 @@ To do
         Light object in scene graph
         accumulate during Visit?
             Yeah - Visit collects things to draw and relevant info, it doesn't draw
-    templated trisrc, r9, assimp loaders
+    templated r9, assimp loaders
     time modulation nodes in the scene graph: scale, phase
     Move out all scene goop so other apps can use them??
     lua control of scene

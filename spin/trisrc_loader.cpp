@@ -119,6 +119,13 @@ struct Vertex
     float n[3];
     float c[4];
     float t[2];
+    Vertex() {}
+    Vertex(float v_[3], float n_[3], float c_[4], float t_[2]) :
+        v{v_[0], v_[1], v_[2]},
+        n{n_[0], n_[1], n_[2]},
+        c{c_[0], c_[1], c_[2], c_[3]},
+        t{t_[0], t_[1]}
+    {}
 };
 
 struct VertexComparator
@@ -227,6 +234,24 @@ struct indexed_shape
     vector<Vertex> vertices;
     vector<unsigned int> indices;
 
+    void add_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2)
+    {
+        for(auto v : {v0, v1, v2}) {
+	    auto vx = vertex_map.find(v);
+
+	    if(true /* vx == vertex_map.end() */) {
+		vertices.push_back(v);
+
+		int index = vertices.size() - 1;
+		vertex_map[v] = index;
+		indices.push_back(index);
+
+	    } else {
+		indices.push_back(vx->second);
+	    }
+	}
+    }
+
     map<Vertex, unsigned int, VertexComparator> vertex_map;      // only used during load
 
     indexed_shape(const string& name_, const string& texture_name_, const vec4f& specular_, float shininess_) :
@@ -234,20 +259,32 @@ struct indexed_shape
         specular(specular_),
         shininess(shininess_),
         texture_name(texture_name_)
-    {}
+    { }
+
 };
 
 typedef map<string, indexed_shape*> indexed_shape_dict;
 
-bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
+
+/*
+
+VERTEX
+    VERTEX(float v[3], float n[3], float c[4], float t[2])
+MATERIAL
+    MATERIAL(const char *texture, float specular[4], float shininess);
+TRIANGLE_SETS
+    get(const char *name, const MATERIAL& material)
+        add_triangle(const VERTEX& v0, const VERTEX& v1, const VERTEX& v2)
+
+*/
+
+template <class TRIANGLE_SETS, class MATERIAL, class VERTEX>
+bool ParseTriSrc(FILE *fp, TRIANGLE_SETS& sets)
 {
-    indexed_shape_dict shapes;
     char texture_name[512];
     char tag_name[512];
-    vec4f specular_color;
+    float specular_color[4];
     float shininess;
-
-    size_t total_tris = 0;
 
     while(fscanf(fp,"\"%[^\"]\"", texture_name) == 1) {
         if(strcmp(texture_name, "*") == 0)
@@ -258,78 +295,109 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
 	    return false;
 	}
 
-	if(fscanf(fp,"%g %g %g %g %g ", &specular_color.m_v[0], &specular_color.m_v[1],
-	    &specular_color.m_v[2], &specular_color.m_v[3], &shininess) != 5) {
+	if(fscanf(fp,"%g %g %g %g %g ", &specular_color[0], &specular_color[1],
+	    &specular_color[2], &specular_color[3], &shininess) != 5) {
 	    fprintf(stderr, "couldn't read specular properties\n");
 	    return false;
 	}
+
 	if(shininess > 0 && shininess < 1) {
 	    // shininess is not exponent - what is it?
 	    shininess *= 10;
 	}
 
-        Vertex verts[3];
+        VERTEX verts[3];
         for(int i = 0; i < 3; i++) {
-	    Vertex& v = verts[i];
+            float v[3];
+            float n[3];
+            float c[4];
+            float t[2];
 
 	    if(fscanf(fp,"%g %g %g %g %g %g %g %g %g %g %g %g ",
-	        &v.v[0], &v.v[1], &v.v[2],
-	        &v.n[0], &v.n[1], &v.n[2],
-	        &v.c[0], &v.c[1], &v.c[2], &v.c[3],
-	        &v.t[0], &v.t[1]) != 12) {
+	        &v[0], &v[1], &v[2],
+	        &n[0], &n[1], &n[2],
+	        &c[0], &c[1], &c[2], &c[3],
+	        &t[0], &t[1]) != 12) {
 
 		fprintf(stderr, "couldn't read Vertex\n");
 		return false;
 	    }
+            verts[i] = VERTEX(v, n, c, t);
         }
 
-	char shape_name_cstr[512];
-	sprintf(shape_name_cstr, "%s.%s%.2f%.2f%.2f%.2f",
-            texture_name, tag_name,
-            specular_color[0], specular_color[1], specular_color[2],
-            shininess);
+        MATERIAL mtl(texture_name, specular_color, shininess);
 
-	string shape_name(shape_name_cstr);
+        sets.get_triangle_set(tag_name, mtl).add_triangle(verts[0], verts[1], verts[2]);
+    }
+    return true;
+}
 
-	auto itr = shapes.find(shape_name);
-	indexed_shape *sh;
+// XXX Temporary scaffolding to support parsing TriSets with old goop
+struct material
+{
+    string diffuse_texture_name;
+    float specular[4];
+    float shininess;
+    material(const string diffuse_texture, float specular_[4], float shininess_) :
+        diffuse_texture_name(diffuse_texture),
+        specular{specular_[0], specular_[1], specular_[2], specular_[3]},
+        shininess(shininess_)
+    { }
+};
 
-	if (itr == shapes.end()) {
+struct triangle_sets
+{
+    string _dirname;
+    triangle_sets(const string dirname_) :
+        _dirname(dirname_)
+    {}
+
+    indexed_shape_dict shapes;
+    indexed_shape& get_triangle_set(const char *name, const material& mtl)
+    {
+        char shape_name_cstr[512];
+        sprintf(shape_name_cstr, "%s.%s%.2f%.2f%.2f%.2f",
+            mtl.diffuse_texture_name.c_str(), name,
+            mtl.specular[0], mtl.specular[1], mtl.specular[2],
+            mtl.shininess);
+
+        string shape_name(shape_name_cstr);
+
+        auto itr = shapes.find(shape_name);
+        indexed_shape *sh;
+
+        if (itr == shapes.end()) {
 
             string absoluteTextureName;
-            if (texture_name == nullptr || strlen(texture_name) == 0)
+            if (mtl.diffuse_texture_name.empty())
                 absoluteTextureName = "";
             else
-                absoluteTextureName = _dirname + "/" + string(texture_name);
+                absoluteTextureName = _dirname + "/" + string(mtl.diffuse_texture_name);
 
-	    sh = new indexed_shape(tag_name, absoluteTextureName,
-	        specular_color, shininess);
-	    shapes[shape_name] = sh;
+            sh = new indexed_shape(name, absoluteTextureName, mtl.specular,
+                mtl.shininess);
+            shapes[shape_name] = sh;
 
-	} else {
+        } else {
 
-	    sh = itr->second;
-	}
+            sh = itr->second;
 
-        for(int i = 0; i < 3; i++) {
-	    Vertex& v = verts[i];
-	    auto vx = sh->vertex_map.find(v);
-
-	    if(true || vx == sh->vertex_map.end()) {
-		sh->vertices.push_back(v);
-
-		int index = sh->vertices.size() - 1;
-		sh->vertex_map[v] = index;
-		sh->indices.push_back(index);
-	    } else {
-		sh->indices.push_back(vx->second);
-	    }
-	}
-
-	total_tris++;
+        }
+        return *sh;
     }
+};
 
-    for(auto named_shape : shapes) {
+// XXX let the thing this is calling do the de-indexing?
+bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
+{
+    triangle_sets sets(_dirname);
+
+    bool success = ParseTriSrc<triangle_sets, material, Vertex>(fp, sets);
+
+    if(!success)
+        return success;
+
+    for(auto named_shape : sets.shapes) {
         indexed_shape *sh = named_shape.second;
 
         static vec4f default_ambient(.1, .1, .1, 1);
@@ -346,14 +414,12 @@ bool ReadTriSrc(FILE *fp, string _dirname, vector<NodePtr>& nodes)
         } else {
 
             GLuint texture = LoadTexture(sh->texture_name);
-            printf("texture is %u\n", texture);
             
             PhongShader::MaterialPtr mtl(new PhongShader::Material(default_diffuse, texture, default_ambient, sh->specular, sh->shininess));
 
             // XXX transparency
 
             nodes.push_back(MakeShape(mtl, &sh->vertices[0], sh->vertices.size(), &sh->indices[0], sh->indices.size(), true));
-
         }
     }
 
