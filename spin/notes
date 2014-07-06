@@ -9,10 +9,7 @@ Material?
         -> best practice is tangent space?
 
 To do
-    Do projection in Environment as well
-        move fov and projection matrix to controller or nodes in graph
-        nearclip and farclip
-    In DefaultController, manage manip and marix against root
+    move fov, projection matrix, nearclip, farclip to controller or nodes in graph
     pull lights from scene graph
         Light object in scene graph
         accumulate during Visit?
