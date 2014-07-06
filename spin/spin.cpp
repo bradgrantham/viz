@@ -76,39 +76,46 @@ void DrawScene(float now)
     // if(farClip < 0.2 * gSceneManip->m_reference_size)
 	// nearClip = 0.2 * gSceneManip->m_reference_size;
 
+    // XXX Calculation of frustum matrix will move into a Node subclass
     float frustumLeft, frustumRight, frustumBottom, frustumTop;
     frustumTop = tanf(gFOV / 180.0 * 3.14159 / 2) * nearClip;
     frustumBottom = -frustumTop;
     frustumRight = frustumTop * gWindowWidth / gWindowHeight;
     frustumLeft = -frustumRight;
-    mat4f projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
+    mat4f tmp_projection = mat4f::frustum(frustumLeft, frustumRight, frustumBottom, frustumTop, nearClip, farClip);
 
     Light light(vec4f(.577, .577, .577, 0), vec4f(1, 1, 1, 1));
 
     vector<Light> lights;
     lights.push_back(light);
-    Environment env(projection, mat4f::identity, lights);
+    Environment env(tmp_projection, mat4f::identity, lights);
     DisplayList displaylist;
     gSceneRoot->Visit(env, displaylist);
 
+    mat4f projection;
     mat4f modelview;
-    bool modelviewInvalid = true;
+    bool loadMatrices = true;
+
     GLuint program = 0;
+
     for(auto it : displaylist) {
         DisplayInfo displayinfo = it.first;
         vector<DrawablePtr>& drawables = it.second;
         EnvironmentUniforms& envu = displayinfo.envu;
+
         if(program != displayinfo.program) {
             glUseProgram(displayinfo.program);
-            modelviewInvalid = true;
-            glUniformMatrix4fv(envu.projection, 1, GL_FALSE, projection.m_v);
+            loadMatrices = true;
+
+            // XXX Should be loaded from environment
             glUniform4fv(envu.lightPosition, 1, lights[0].position.m_v);
             glUniform4fv(envu.lightColor, 1, lights[0].color.m_v);
             CheckOpenGL(__FILE__, __LINE__);
+
             program = displayinfo.program;
         }
-        if(modelviewInvalid || !ExactlyEqual(modelview, displayinfo.modelview)) {
-            modelviewInvalid = false;
+
+        if(loadMatrices || !ExactlyEqual(modelview, displayinfo.modelview)) {
             mat4f modelview_normal = displayinfo.modelview;
             // XXX should not invert every time
             // XXX parallel normal matrix math path?
@@ -119,6 +126,14 @@ void DrawScene(float now)
             glUniformMatrix4fv(envu.modelviewNormal, 1, GL_FALSE, modelview_normal.m_v);
             modelview = displayinfo.modelview;
         }
+
+        if(loadMatrices || !ExactlyEqual(projection, displayinfo.projection)) {
+            glUniformMatrix4fv(envu.projection, 1, GL_FALSE, displayinfo.projection.m_v);
+            projection = displayinfo.projection;
+        }
+
+        loadMatrices = false;
+
         for(auto drawable : drawables) {
             drawable->Draw(now, gDrawWireframe);
         }

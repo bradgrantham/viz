@@ -104,11 +104,13 @@ struct Environment
 struct DisplayInfo
 {
     mat4f modelview;
+    mat4f projection;
     GLuint program;
     EnvironmentUniforms envu; // XXX Clumsy?  Really tied to program, so shouldn't be independent here
 
-    DisplayInfo(const mat4f& modelview_, GLuint program_, const EnvironmentUniforms& envu_) :
+    DisplayInfo(const mat4f& modelview_, const mat4f& projection_, GLuint program_, const EnvironmentUniforms& envu_) :
         modelview(modelview_),
+        projection(projection_),
         program(program_),
         envu(envu_)
     {}
@@ -121,6 +123,12 @@ struct DisplayInfo
                 if(d1.modelview.m_v[i] < d2.modelview.m_v[i])
                     return true;
                 if(d1.modelview.m_v[i] < d2.modelview.m_v[i])
+                    return false;
+            }
+            for(int i = 0; i < 16; i++) {
+                if(d1.projection.m_v[i] < d2.projection.m_v[i])
+                    return true;
+                if(d1.projection.m_v[i] < d2.projection.m_v[i])
                     return false;
             }
             if(d1.program < d2.program)

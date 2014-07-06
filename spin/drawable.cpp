@@ -64,7 +64,7 @@ void DrawList::Draw(bool drawWireframe)
 
 void Shape::Visit(const Environment& env, DisplayList& displaylist)
 {
-    displaylist[DisplayInfo(env.modelview, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
+    displaylist[DisplayInfo(env.modelview, env.projection, drawable->GetProgram(), drawable->GetEnvironmentUniforms())].push_back(drawable);
 }
 
 box TransformedBounds(const mat4f& transform, vector<NodePtr> children)
