@@ -54,6 +54,15 @@ inline V vec_normalize(const V& v)
     return tmp;
 }
 
+/**
+ * \brief Blend two vectors together using weights
+ *
+ * Combine two vectors using weights.  Result is \f$v_0w_0 + v_1w_1\f$.
+ * For example, to perform a linear interpolation between vectors
+ * `v0` and `v1` using interpolant `a`, you might call
+ *
+ *     vec_blend(v0, a, v1, 1.0f - a);
+ */
 template <class V>
 inline V vec_blend(const V& v0, float w0, const V& v1, float w1)
 {
