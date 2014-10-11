@@ -26,8 +26,12 @@ Subdirectories:
   * Encapsulated program and geometry objects
   * Simple per-pixel lighting including diffuse color texturing
   * Meant to be standalone viewer for models
-  * Some example "spin" command lines
+  * Some example "spin" command lines:
 ```
-spin 256gon.builtin
-spin 64gon.builtin
+    spin 256gon.builtin
+    spin 64gon.builtin
 ```
+
+To build Doxygen documentation, ``cd docs``, then *either:*
+* doxywizard (on MacOS, "port install doxygen +wizard"), load docs/doxygen, run doxygen
+* run doxygen directly: ``doxygen doxyfile``
