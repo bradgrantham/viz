@@ -33,5 +33,5 @@ Subdirectories:
 ```
 
 To build Doxygen documentation, ``cd docs``, then *either:*
-* doxywizard (on MacOS, "port install doxygen +wizard"), load docs/doxygen, run doxygen
+* doxywizard (on MacOS, ``port install doxygen +wizard``), load docs/doxyfile, run
 * run doxygen directly: ``doxygen doxyfile``
