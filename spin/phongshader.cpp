@@ -210,7 +210,7 @@ const char *PhongShader::fragmentShaderText = "\n\
         vec3 refl = reflect(-ldir, normal);\n\
 \n\
         #if defined(TEXTURING)\n\
-        vec4 diffuse = max(0, dot(normal, ldir)) * light_color * texture(material_diffuse_texture, vertex_texcoord); ;\n\
+        vec4 diffuse = max(0, dot(normal, ldir)) * light_color * texture(material_diffuse_texture, vertex_texcoord);\n\
         #else\n\
         vec4 diffuse = max(0, dot(normal, ldir)) * light_color;\n\
         #endif\n\
