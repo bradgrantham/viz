@@ -71,10 +71,8 @@ void DrawScene(float now)
     /* XXX - need to create new box from all subordinate boxes */
     nearClip = .1 ; // XXX - gSceneManip->m_translation[2] - gSceneManip->m_reference_size;
     farClip = 1000 ; // XXX - gSceneManip->m_translation[2] + gSceneManip->m_reference_size;
-    // if(nearClip < 0.1 * gSceneManip->m_reference_size)
-	// nearClip = 0.1 * gSceneManip->m_reference_size;
-    // if(farClip < 0.2 * gSceneManip->m_reference_size)
-	// nearClip = 0.2 * gSceneManip->m_reference_size;
+    // nearClip = std::max(nearClip, 0.1 * gSceneManip->m_reference_size);
+    // farClip = std::min(farClip, 2 * gSceneManip->m_reference_size);
 
     // XXX Calculation of frustum matrix will move into a Node subclass
     float frustumLeft, frustumRight, frustumBottom, frustumTop;
@@ -117,7 +115,7 @@ void DrawScene(float now)
 
         if(loadMatrices || !ExactlyEqual(modelview, displayinfo.modelview)) {
             mat4f modelview_normal = displayinfo.modelview;
-            // XXX should not invert every time
+            // XXX might not invert every time
             // XXX parallel normal matrix math path?
             modelview_normal.transpose();
             modelview_normal.invert();
