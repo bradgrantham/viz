@@ -2,6 +2,7 @@
 #include "loader.h"
 #include "builtin_loader.h"
 #include "trisrc_loader.h"
+#include "assimp_loader.h"
 #include "manipulator.h"
 
 using namespace std;
@@ -21,8 +22,12 @@ tuple<bool, NodePtr> LoadModel(const string& filename)
 
     } else {
 
-        cerr << "No loader available for extension " << extension << endl;
-        return make_tuple(false, NodePtr());
+        return AssimpLoader::Load(filename);
+
+    // } else {
+
+        // cerr << "No loader available for extension " << extension << endl;
+        // return make_tuple(false, NodePtr());
     }
 
 }

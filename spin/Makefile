@@ -19,7 +19,7 @@ default: spin
 OPT=-g
 
 CXXFLAGS=$(OPT) -Wall -I/opt/local/include --std=c++11
-LDFLAGS=-L/opt/local/lib -lglfw -lfreeimageplus -framework OpenGL -framework Cocoa -framework IOkit
+LDFLAGS=-L/opt/local/lib -lassimp -lglfw -lfreeimageplus -framework OpenGL -framework Cocoa -framework IOkit
 
 loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h loader.h
 spin.o: drawable.h geometry.h manipulator.h phongshader.h vectormath.h
@@ -29,8 +29,9 @@ drawable.o: drawable.h
 phongshader.o: drawable.h geometry.h phongshader.h vectormath.h
 builtin_loader.o: builtin_loader.h drawable.h geometry.h phongshader.h vectormath.h
 trisrc_loader.o: trisrc_loader.h drawable.h geometry.h phongshader.h vectormath.h
+assimp_loader.o: assimp_loader.h drawable.h geometry.h phongshader.h vectormath.h
 
-CXXSOURCES      = spin.cpp vectormath.cpp manipulator.cpp drawable.cpp phongshader.cpp builtin_loader.cpp trisrc_loader.cpp loader.cpp
+CXXSOURCES      = spin.cpp vectormath.cpp manipulator.cpp drawable.cpp phongshader.cpp builtin_loader.cpp trisrc_loader.cpp assimp_loader.cpp loader.cpp
 OBJECTS         = $(CXXSOURCES:.cpp=.o)
 
 spin: $(OBJECTS)
