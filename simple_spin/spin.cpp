@@ -43,7 +43,7 @@ static bool gStreamFrames = false;
 static int gWindowWidth;
 static int gWindowHeight;
 
-static double gMotionReported = false;
+static bool gMotionReported = false;
 
 static double gOldMouseX, gOldMouseY;
 static int gButtonPressed = -1;
@@ -327,7 +327,7 @@ void DrawScene()
 
     mat4f modelview = gObjectManip->m_matrix * gSceneManip->m_matrix;
     mat4f modelview_normal = modelview;
-    // XXX should not invert every time; parallel normal matrix math path?
+    // XXX might not invert every time; parallel normal matrix math path?
     modelview_normal.transpose();
     modelview_normal.invert();
     glUniformMatrix4fv(gModelviewUniform, 1, GL_FALSE, modelview.m_v);
