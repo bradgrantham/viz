@@ -134,55 +134,25 @@ struct Vertex
         c{c_[0], c_[1], c_[2], c_[3]},
         t{t_[0], t_[1]}
     {}
+    Vertex(const vec3f& v_, const vec3f& n_, const vec4f& c_, const vec2f& t_) :
+        v{v_[0], v_[1], v_[2]},
+        n{n_[0], n_[1], n_[2]},
+        c{c_[0], c_[1], c_[2], c_[3]},
+        t{t_[0], t_[1]}
+    {}
 };
-
-void set(float f[2], float x, float y)
-{
-    f[0] = x;
-    f[1] = y;
-}
-
-void set(float f[3], float x, float y, float z)
-{
-    f[0] = x;
-    f[1] = y;
-    f[2] = z;
-}
-
-void set(float f[4], float x, float y, float z, float w)
-{
-    f[0] = x;
-    f[1] = y;
-    f[2] = z;
-    f[3] = w;
-}
 
 Vertex ConvertVertex(const aiMesh* mesh, int i)
 {
-    bool noNormals = (mesh->mNormals == NULL);
-    bool noColors = (mesh->mColors[0] == NULL);
-    bool noTexCoords = (mesh->mTextureCoords[0] == NULL);
+    vec3f position(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
 
-    Vertex v;
+    vec3f normal = (mesh->mNormals == NULL) ? vec3f(0, 0, 1) : vec3f(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
 
-    set(v.v, mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+    vec2f texcoord = (mesh->mTextureCoords[0] == NULL) ? vec2f(0, 0) : vec2f(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
 
-    if(noNormals)
-        set(v.n, 0, 0, 1);
-    else
-        set(v.n, mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+    vec4f color = (mesh->mColors[0] == NULL) ? vec4f(1, 1, 1, 1) : vec4f(mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b, mesh->mColors[0][i].a);
 
-    if(noTexCoords)
-        set(v.t, 0, 0);
-    else
-        set(v.t, mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
-
-    if(noColors)
-        set(v.c, 1, 1, 1, 1);
-    else
-        set(v.c, mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b, mesh->mColors[0][i].a);
-
-    return v;
+    return Vertex(position, normal, color, texcoord);
 }
 
 struct VertexComparator
